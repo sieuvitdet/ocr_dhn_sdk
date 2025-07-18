@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/water_meter_result.dart';
@@ -9,12 +10,10 @@ class WaterMeterOCRService {
   
   WaterMeterOCRService() : _textRecognizer = TextRecognizer();
 
-  Future<WaterMeterResult> processImage(String imagePath) async {
+  Future<WaterMeterResult> processImage(Uint8List imageBytes,{String? imageFull} ) async {
     try {
       // Read and preprocess the image
-      final File imageFile = File(imagePath);
-      final bytes = await imageFile.readAsBytes();
-      var image = img.decodeImage(bytes);
+      var image = img.decodeImage(imageBytes);
       
       if (image == null) {
         return WaterMeterResult(
@@ -28,14 +27,14 @@ class WaterMeterOCRService {
       List<String> allResults = [];
       
       // Approach 1: Original image
-      var result1 = await _processWithSettings(image, imagePath, 'original');
+      var result1 = await _processWithSettings(image, imageBytes, 'original');
       allResults.add(result1);
       
       // Approach 2: High contrast + crop center
       var image2 = img.copyResize(image, width: 800, height: 600);
       image2 = img.contrast(image2, contrast: 200);
       image2 = img.adjustColor(image2, brightness: 1.3);
-      var result2 = await _processWithSettings(image2, imagePath, 'high_contrast');
+      var result2 = await _processWithSettings(image2, imageBytes, 'high_contrast');
       allResults.add(result2);
       
       // Approach 3: Grayscale + threshold
@@ -55,7 +54,7 @@ class WaterMeterOCRService {
           }
         }
       }
-      var result3 = await _processWithSettings(image3, imagePath, 'threshold');
+      var result3 = await _processWithSettings(image3, imageBytes, 'threshold');
       allResults.add(result3);
       
       // Approach 4: Focus on center area only
@@ -71,7 +70,7 @@ class WaterMeterOCRService {
         height: cropSize,
       );
       image4 = img.contrast(image4, contrast: 180);
-      var result4 = await _processWithSettings(image4, imagePath, 'center_crop');
+      var result4 = await _processWithSettings(image4, imageBytes, 'center_crop');
       allResults.add(result4);
 
       // Find the best result
@@ -80,7 +79,7 @@ class WaterMeterOCRService {
       return WaterMeterResult(
         reading: bestReading,
         confidence: _calculateConfidence(bestReading),
-        imagePath: imagePath,
+        imageBytes: imageBytes,
         debugInfo: allResults,
       );
     } catch (e) {
@@ -92,23 +91,20 @@ class WaterMeterOCRService {
     }
   }
   
-  Future<String> _processWithSettings(img.Image processedImage, String originalPath, String suffix) async {
+  Future<String> _processWithSettings(img.Image processedImage, Uint8List originalBytes, String suffix) async {
     try {
       // Save preprocessed image
       final tempDir = await getTemporaryDirectory();
       final preprocessedPath = '${tempDir.path}/preprocessed_$suffix.jpg';
-      File(preprocessedPath).writeAsBytesSync(img.encodeJpg(processedImage, quality: 95));
+      File(preprocessedPath).writeAsBytesSync(originalBytes);
 
       // Process with OCR
       final inputImage = InputImage.fromFilePath(preprocessedPath);
       final recognizedText = await _textRecognizer.processImage(inputImage);
       
-      print('OCR Result for $suffix:\n${recognizedText.text}\n---');
-      
       // Extract reading
       return _extractMeterReading(recognizedText.text);
     } catch (e) {
-      print('Error in $suffix processing: $e');
       return '';
     }
   }

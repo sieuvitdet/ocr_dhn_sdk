@@ -4,13 +4,13 @@ import 'package:flutter/foundation.dart';
 class WaterMeterResult {
   final String reading;
   final double confidence;
-  final String? imagePath;
+  final Uint8List? imageBytes;
   final List<String>? debugInfo;
 
   const WaterMeterResult({
     required this.reading,
     required this.confidence,
-    this.imagePath,
+    this.imageBytes,
     this.debugInfo,
   });
 
@@ -25,7 +25,7 @@ class WaterMeterResult {
     return {
       'reading': reading,
       'confidence': confidence,
-      'imagePath': imagePath,
+      'imageBytes': imageBytes,
       'debugInfo': debugInfo,
     };
   }
@@ -34,13 +34,13 @@ class WaterMeterResult {
     return WaterMeterResult(
       reading: json['reading'] as String,
       confidence: json['confidence'] as double,
-      imagePath: json['imagePath'] as String?,
+      imageBytes: json['imageBytes'] as Uint8List?,
       debugInfo: (json['debugInfo'] as List?)?.cast<String>(),
     );
   }
 
   @override
   String toString() {
-    return 'WaterMeterResult(reading: $reading, confidence: $confidence, imagePath: $imagePath)';
+    return 'WaterMeterResult(reading: $reading, confidence: $confidence, imageBytes: $imageBytes)';
   }
 } 
