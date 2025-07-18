@@ -130,7 +130,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-      final result = await _waterMeterSdkPlugin.processWaterMeterImage(_selectedImage!.path);
+        final result = await _waterMeterSdkPlugin.processWaterMeterImage(await _selectedImage!.readAsBytes(), imageFull: _selectedImage!.path);
       
       if (mounted) {
         setState(() {
