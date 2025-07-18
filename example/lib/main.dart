@@ -37,6 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isProcessing = false;
   File? _selectedImage;
   bool _hasPermission = false;
+   Uint8List? selectedImage;
 
   @override
   void initState() {
@@ -50,6 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _hasPermission = status.isGranted;
     });
   }
+  
 
   Future<void> _requestPhotoPermission() async {
     final status = await Permission.photos.request();
@@ -93,6 +95,41 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _requestCameraPermission() async {
+    final status = await Permission.camera.request();
+    setState(() {
+      _hasPermission = status.isGranted;
+    });
+  }
+
+  Future<void> _pickImageFromCamera() async {
+    if (!_hasPermission) {
+      await _requestCameraPermission();
+      return;
+    }
+
+    try {
+      final XFile? pickedFile = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+        });
+      }
+    } catch (e) {
+      debugPrint('Error picking image: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error picking image: $e')),
+      );
+    }
+
+  }
+
   Future<void> _pickImageFromGallery() async {
     if (!_hasPermission) {
       await _requestPhotoPermission();
@@ -130,10 +167,11 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-        final result = await _waterMeterSdkPlugin.processWaterMeterImage(await _selectedImage!.readAsBytes(), imageFull: _selectedImage!.path);
+        WaterMeterResult result = await _waterMeterSdkPlugin.processWaterMeterImage(await _selectedImage!.readAsBytes(), imageFull: _selectedImage!.path);
       
       if (mounted) {
         setState(() {
+          selectedImage = result.imageBytes;
           _lastResult = result;
           _isProcessing = false;
         });
@@ -166,49 +204,55 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: ListView(
+          // crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Image display area
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: _selectedImage != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.file(
-                          _selectedImage!,
-                          fit: BoxFit.contain,
-                          width: double.infinity,
-                        ),
-                      )
-                    : Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.image,
-                              size: 64,
-                              color: Colors.grey.shade400,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No image selected',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(8),
               ),
+              child: _selectedImage != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.file(
+                        _selectedImage!,
+                        fit: BoxFit.contain,
+                        width: double.infinity,
+                        height: 400,
+                      ),
+                    )
+                  : Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.image,
+                            size: 64,
+                            color: Colors.grey.shade400,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No image selected',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+              
             ),
             
             const SizedBox(height: 16),
+
+            if (selectedImage != null)
+                Image.memory(selectedImage!,
+                fit: BoxFit.contain,
+                height: 200,
+                width: 200,),
             
             // Buttons
             Row(
@@ -217,12 +261,25 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: ElevatedButton.icon(
                     onPressed: _hasPermission ? _pickImageFromGallery : _requestPhotoPermission,
                     icon: const Icon(Icons.photo_library),
-                    label: Text(_hasPermission ? 'Select Image' : 'Grant Permission'),
+                    label: Text(_hasPermission ? 'Chọn ảnh' : 'Grant Permission'),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                   ),
                 ),
+                const SizedBox(width: 12),
+
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _hasPermission ? _pickImageFromCamera : _requestPhotoPermission,
+                    icon: const Icon(Icons.camera),
+                    label: Text(_hasPermission ? 'Chụp ảnh' : 'Grant Permission'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton.icon(
@@ -289,6 +346,24 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                       ),
+
+                      if(_lastResult!.rawOcrText != null && _lastResult!.rawOcrText!.isNotEmpty)
+                        Text(
+                          'Raw OCR Text: ${_lastResult!.rawOcrText}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+
+                      if(_lastResult!.processedText != null && _lastResult!.processedText!.isNotEmpty)
+                        Text(
+                          'Processed Text: ${_lastResult!.processedText}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
                   ],
                 ),
               ),
