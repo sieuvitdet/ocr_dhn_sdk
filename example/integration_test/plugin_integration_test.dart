@@ -7,6 +7,8 @@
 // https://flutter.dev/to/integration-testing
 
 
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
@@ -17,9 +19,7 @@ void main() {
 
   testWidgets('getPlatformVersion test', (WidgetTester tester) async {
     final WaterMeterSdk plugin = WaterMeterSdk();
-    final String? version = await plugin.getPlatformVersion();
-    // The version string depends on the host platform running the test, so
-    // just assert that some non-empty string is returned.
-    expect(version?.isNotEmpty, true);
+    final result = await plugin.processWaterMeterImage(await File('test/images/test.jpg').readAsBytes());
+    expect(result, isNotNull);
   });
 }

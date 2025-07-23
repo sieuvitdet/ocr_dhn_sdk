@@ -167,11 +167,11 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-        WaterMeterResult result = await _waterMeterSdkPlugin.processWaterMeterImage(await _selectedImage!.readAsBytes(), imageFull: _selectedImage!.path);
+        WaterMeterResult? result = await _waterMeterSdkPlugin.processWaterMeterImage(await _selectedImage!.readAsBytes());
       
       if (mounted) {
         setState(() {
-          selectedImage = result.imageBytes;
+          selectedImage = result?.imageBytes;
           _lastResult = result;
           _isProcessing = false;
         });
@@ -191,7 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
-    _waterMeterSdkPlugin.dispose();
+    // _waterMeterSdkPlugin.dispose();
     super.dispose();
   }
 

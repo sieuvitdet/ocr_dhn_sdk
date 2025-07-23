@@ -28,51 +28,51 @@ class WaterMeterOCRService {
       img.Image? annotatedImage;
       
       // Approach 1: Original image
-      var result1 = await _processWithSettings(image, imageBytes, 'original');
-      allResults.add(result1);
+      // var result1 = await _processWithSettings(image, imageBytes, 'original');
+      // allResults.add(result1);
       
-      // Approach 2: High contrast + crop center
-      var image2 = img.copyResize(image, width: 800, height: 600);
-      image2 = img.contrast(image2, contrast: 200);
-      image2 = img.adjustColor(image2, brightness: 1.3);
-      var result2 = await _processWithSettings(image2, imageBytes, 'high_contrast');
-      allResults.add(result2);
+      // // Approach 2: High contrast + crop center
+      // var image2 = img.copyResize(image, width: 800, height: 600);
+      // image2 = img.contrast(image2, contrast: 200);
+      // image2 = img.adjustColor(image2, brightness: 1.3);
+      // var result2 = await _processWithSettings(image2, imageBytes, 'high_contrast');
+      // allResults.add(result2);
       
       // Approach 3: Grayscale + threshold
-      var image3 = img.grayscale(image);
-      // Apply threshold to make text more distinct
-      for (int y = 0; y < image3.height; y++) {
-        for (int x = 0; x < image3.width; x++) {
-          var pixel = image3.getPixel(x, y);
-          var r = pixel.r.toInt();
-          var g = pixel.g.toInt(); 
-          var b = pixel.b.toInt();
-          var luminance = (0.299 * r + 0.587 * g + 0.114 * b).round();
-          if (luminance > 128) {
-            image3.setPixel(x, y, img.ColorRgb8(255, 255, 255)); // White
-          } else {
-            image3.setPixel(x, y, img.ColorRgb8(0, 0, 0)); // Black
-          }
-        }
-      }
-      var result3 = await _processWithSettings(image3, imageBytes, 'threshold');
+      // var image3 = img.grayscale(image);
+      // // Apply threshold to make text more distinct
+      // for (int y = 0; y < image3.height; y++) {
+      //   for (int x = 0; x < image3.width; x++) {
+      //     var pixel = image3.getPixel(x, y);
+      //     var r = pixel.r.toInt();
+      //     var g = pixel.g.toInt(); 
+      //     var b = pixel.b.toInt();
+      //     var luminance = (0.299 * r + 0.587 * g + 0.114 * b).round();
+      //     if (luminance > 128) {
+      //       image3.setPixel(x, y, img.ColorRgb8(255, 255, 255)); // White
+      //     } else {
+      //       image3.setPixel(x, y, img.ColorRgb8(0, 0, 0)); // Black
+      //     }
+      //   }
+      // }
+      var result3 = await _processWithSettings(image, imageBytes, 'threshold');
       allResults.add(result3);
       
-      // Approach 4: Focus on center area only
-      final centerX = image.width ~/ 2;
-      final centerY = image.height ~/ 2;
-      final cropSize = (image.width < image.height ? image.width : image.height) * 0.6 ~/ 1;
+      // // Approach 4: Focus on center area only
+      // final centerX = image.width ~/ 2;
+      // final centerY = image.height ~/ 2;
+      // final cropSize = (image.width < image.height ? image.width : image.height) * 0.6 ~/ 1;
       
-      var image4 = img.copyCrop(
-        image,
-        x: centerX - cropSize ~/ 2,
-        y: centerY - cropSize ~/ 2,
-        width: cropSize,
-        height: cropSize,
-      );
-      image4 = img.contrast(image4, contrast: 180);
-      var result4 = await _processWithSettings(image4, imageBytes, 'center_crop');
-      allResults.add(result4);
+      // var image4 = img.copyCrop(
+      //   image,
+      //   x: centerX - cropSize ~/ 2,
+      //   y: centerY - cropSize ~/ 2,
+      //   width: cropSize,
+      //   height: cropSize,
+      // );
+      // image4 = img.contrast(image4, contrast: 180);
+      // var result4 = await _processWithSettings(image4, imageBytes, 'center_crop');
+      // allResults.add(result4);
 
       // Find the best result and get annotated image
       String bestReading = _selectBestFromMultipleResults(allResults);
@@ -88,7 +88,7 @@ class WaterMeterOCRService {
         for (int i = 0; i < allResults.length; i++) {
           if (allResults[i] == bestReading) {
             // Get the corresponding raw and processed text
-            var ocrResult = await _getOcrResult(image, imageBytes, ['original', 'high_contrast', 'threshold', 'center_crop'][i]);
+            var ocrResult = await _getOcrResult(image, imageBytes, ['threshold'][i]);
             if (ocrResult != null) {
               bestRawText = ocrResult['raw'];
               bestProcessedText = ocrResult['processed'];
