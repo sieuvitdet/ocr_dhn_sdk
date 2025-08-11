@@ -24,7 +24,6 @@ class WaterMeterOcrServiceTfLite {
     try {
       final modelPath = 'assets/models/water_model_detect.tflite';
       
-      // Adaptive thread configuration based on device capabilities
       final int availableProcessors = Platform.numberOfProcessors;
       final int optimalThreads = _calculateOptimalThreads(availableProcessors);
       
@@ -32,37 +31,23 @@ class WaterMeterOcrServiceTfLite {
       final options = InterpreterOptions()
         ..threads = optimalThreads;
       
-      // Add delay for low-end devices to prevent memory spikes
       if (optimalThreads <= 2) {
         await Future.delayed(Duration(milliseconds: 100));
       }
       
       _interpreter = await Interpreter.fromAsset(modelPath, options: options);
-      
-      // Get tensor info with error handling
       try {
         _inputShape = _interpreter.getInputTensor(0).shape;
         _outputShape = _interpreter.getOutputTensor(0).shape;
-      } catch (tensorError) {
-        print("⚠️ Error getting tensor info: $tensorError");
-        // Set default shapes if tensor info fails
+        } catch (tensorError) {
         _inputShape = [1, 416, 416, 3];
-        _outputShape = [1, 5, 10647]; // Adjust based on your model
+        _outputShape = [1, 5, 10647];
       }
       
       _isModelLoaded = true;
-      
-      print("✅ Model loaded successfully");
-      print("📊 Input shape: $_inputShape");
-      print("📊 Output shape: $_outputShape");
-      print("🔧 Using $optimalThreads threads (${availableProcessors} processors available)");
     } catch (e) {
-      print("❌ Error loading model: $e");
       _isModelLoaded = false;
-      
-      // Try to load with minimal configuration as fallback
       try {
-        print("🔄 Attempting fallback model loading...");
         final fallbackOptions = InterpreterOptions()
           ..threads = 1;
           
@@ -73,9 +58,7 @@ class WaterMeterOcrServiceTfLite {
         _outputShape = [1, 5, 10647];
         _isModelLoaded = true;
         
-        print("✅ Model loaded with fallback configuration");
       } catch (fallbackError) {
-        print("❌ Fallback loading also failed: $fallbackError");
         throw Exception("Failed to load water detection model: $e");
       }
     }
