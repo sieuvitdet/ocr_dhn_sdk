@@ -24,24 +24,73 @@ class WaterMeterOcrServiceTfLite {
     try {
       final modelPath = 'assets/models/water_model_detect.tflite';
       
-      // Load with options for better performance
+      // Adaptive thread configuration based on device capabilities
+      final int availableProcessors = Platform.numberOfProcessors;
+      final int optimalThreads = _calculateOptimalThreads(availableProcessors);
+      
+      // Load with optimized options for low-end devices
       final options = InterpreterOptions()
-        ..threads = 4; 
+        ..threads = optimalThreads;
+      
+      // Add delay for low-end devices to prevent memory spikes
+      if (optimalThreads <= 2) {
+        await Future.delayed(Duration(milliseconds: 100));
+      }
       
       _interpreter = await Interpreter.fromAsset(modelPath, options: options);
       
-      // Get tensor info
-      _inputShape = _interpreter.getInputTensor(0).shape;
-      _outputShape = _interpreter.getOutputTensor(0).shape;
+      // Get tensor info with error handling
+      try {
+        _inputShape = _interpreter.getInputTensor(0).shape;
+        _outputShape = _interpreter.getOutputTensor(0).shape;
+      } catch (tensorError) {
+        print("⚠️ Error getting tensor info: $tensorError");
+        // Set default shapes if tensor info fails
+        _inputShape = [1, 416, 416, 3];
+        _outputShape = [1, 5, 10647]; // Adjust based on your model
+      }
       
       _isModelLoaded = true;
       
       print("✅ Model loaded successfully");
       print("📊 Input shape: $_inputShape");
       print("📊 Output shape: $_outputShape");
+      print("🔧 Using $optimalThreads threads (${availableProcessors} processors available)");
     } catch (e) {
       print("❌ Error loading model: $e");
-      throw Exception("Failed to load water detection model: $e");
+      _isModelLoaded = false;
+      
+      // Try to load with minimal configuration as fallback
+      try {
+        print("🔄 Attempting fallback model loading...");
+        final fallbackOptions = InterpreterOptions()
+          ..threads = 1;
+          
+        final modelPath = 'assets/models/water_model_detect.tflite';
+        _interpreter = await Interpreter.fromAsset(modelPath, options: fallbackOptions);
+        
+        _inputShape = [1, 416, 416, 3];
+        _outputShape = [1, 5, 10647];
+        _isModelLoaded = true;
+        
+        print("✅ Model loaded with fallback configuration");
+      } catch (fallbackError) {
+        print("❌ Fallback loading also failed: $fallbackError");
+        throw Exception("Failed to load water detection model: $e");
+      }
+    }
+  }
+  
+  int _calculateOptimalThreads(int availableProcessors) {
+    // Conservative thread allocation for low-end devices
+    if (availableProcessors <= 2) {
+      return 1; // Single thread for very low-end devices
+    } else if (availableProcessors <= 4) {
+      return 2; // 2 threads for mid-range devices
+    } else if (availableProcessors <= 6) {
+      return 3; // 3 threads for better devices
+    } else {
+      return 4; // Max 4 threads to prevent excessive memory usage
     }
   }
 
@@ -56,6 +105,12 @@ class WaterMeterOcrServiceTfLite {
     }
 
     try {
+      // Add small delay for low-end devices to prevent memory pressure
+      final int threads = _calculateOptimalThreads(Platform.numberOfProcessors);
+      if (threads <= 2) {
+        await Future.delayed(Duration(milliseconds: 50));
+      }
+      
       final rawImage = img.decodeImage(imageFile);
       if (rawImage == null) {
         print("❌ Failed to decode image");
@@ -65,6 +120,50 @@ class WaterMeterOcrServiceTfLite {
       // Store original dimensions
       final originalWidth = rawImage.width;
       final originalHeight = rawImage.height;
+      
+      // Check if image is too large for low-end devices
+      if (threads <= 2 && (originalWidth > 2000 || originalHeight > 2000)) {
+        // Resize to manageable size for low-end devices
+        final maxDim = 1500;
+        if (originalWidth > maxDim || originalHeight > maxDim) {
+          final scale = math.min(maxDim / originalWidth, maxDim / originalHeight);
+          final newWidth = (originalWidth * scale).round();
+          final newHeight = (originalHeight * scale).round();
+          
+          print("📐 Resizing large image from ${originalWidth}x${originalHeight} to ${newWidth}x${newHeight}");
+          img.Image resizedImage = img.copyResize(
+            rawImage,
+            width: newWidth,
+            height: newHeight,
+            interpolation: img.Interpolation.linear,
+          );
+          
+          // Use resized image for detection
+          final inputTensor = _preprocessImage(resizedImage);
+          final detections = await _runInference(inputTensor);
+          
+          // Scale boxes back to original dimensions
+          final scaledBoxes = _processDetections(
+            detections,
+            originalWidth,
+            originalHeight,
+            confidenceThreshold,
+          );
+          
+          final filteredBoxes = _nonMaxSuppression(scaledBoxes, nmsThreshold);
+          
+          img.Image? processedImage;
+          if (returnProcessedImage) {
+            processedImage = rawImage;
+          }
+          
+          return DetectionResult(
+            boxes: filteredBoxes,
+            processedImage: processedImage,
+            inferenceTime: 0,
+          );
+        }
+      }
 
       // Preprocess image
       final inputTensor = _preprocessImage(rawImage);
