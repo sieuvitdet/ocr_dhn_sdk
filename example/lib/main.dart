@@ -42,6 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _waterMeterSdkPlugin.init();
     _checkPhotoPermission();
   }
 
@@ -191,7 +192,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
-    // _waterMeterSdkPlugin.dispose();
+    _waterMeterSdkPlugin.dispose();
     super.dispose();
   }
 

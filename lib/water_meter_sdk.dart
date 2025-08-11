@@ -9,11 +9,13 @@ import 'dart:typed_data';
 import 'dart:io';
 class WaterMeterSdk {
   final WaterMeterOCRService _ocrService = WaterMeterOCRService();
+    final detector = WaterMeterOcrServiceTfLite();
+
+    init() async {
+      await detector.loadModel();
+    }
 
   Future<WaterMeterResult?> processWaterMeterImage(Uint8List imageBytes, {bool isOnline = false}) async {
-    final detector = WaterMeterOcrServiceTfLite();
-    await detector.loadModel();
-
     DetectionResult? resultImage = await detector.detect(imageBytes);
     if (resultImage != null) {
       if (resultImage.boxes.isNotEmpty && resultImage.processedImage != null) {
@@ -58,6 +60,7 @@ class WaterMeterSdk {
   }
 
   Future<void> dispose() async {
+    detector.dispose();
     await _ocrService.dispose();
   }
 }
