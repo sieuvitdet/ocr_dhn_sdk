@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:water_meter_sdk/water_meter_sdk.dart';
+import 'package:water_meter_sdk/water_meter_sdk_ultralytics_yolo.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,6 +33,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _waterMeterSdkPlugin = WaterMeterSdk();
+  final _yoloService = WaterMeterSdkUltralyticsYolo();
   final _imagePicker = ImagePicker();
   WaterMeterResult? _lastResult;
   bool _isProcessing = false;
@@ -42,7 +44,13 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _waterMeterSdkPlugin.init();
+
+    if (Platform.isIOS) {
+      _yoloService.init();
+    } else if (Platform.isAndroid) {
+      _waterMeterSdkPlugin.init();
+    }
+
     _checkPhotoPermission();
   }
 
@@ -168,7 +176,12 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-        WaterMeterResult? result = await _waterMeterSdkPlugin.processWaterMeterImage(await _selectedImage!.readAsBytes());
+      WaterMeterResult? result;
+      if (Platform.isIOS) {
+        result = await _yoloService.processWaterMeterImage(await _selectedImage!.readAsBytes());
+      } else {
+        result = await _waterMeterSdkPlugin.processWaterMeterImage(await _selectedImage!.readAsBytes());
+      }
       
       if (mounted) {
         setState(() {

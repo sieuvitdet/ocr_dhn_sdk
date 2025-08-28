@@ -61,6 +61,9 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
+    - assets/water_model_2k_obb.onnx
+    - assets/ocr_model.onnx
+    - assets/test_images/
     - assets/models/
 
   # An image asset can refer to one or more resolution-specific "variants", see

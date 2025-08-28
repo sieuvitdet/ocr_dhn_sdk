@@ -1,7 +1,7 @@
 archive
 3.0
-file:///Users/trantanduc/.pub-cache/hosted/pub.dev/archive-4.0.7/
-file:///Users/trantanduc/.pub-cache/hosted/pub.dev/archive-4.0.7/lib/
+file:///Users/trantanduc/.pub-cache/hosted/pub.dev/archive-3.6.1/
+file:///Users/trantanduc/.pub-cache/hosted/pub.dev/archive-3.6.1/lib/
 async
 3.4
 file:///Users/trantanduc/.pub-cache/hosted/pub.dev/async-2.13.0/
@@ -66,6 +66,10 @@ flutter_plugin_android_lifecycle
 3.6
 file:///Users/trantanduc/.pub-cache/hosted/pub.dev/flutter_plugin_android_lifecycle-2.0.28/
 file:///Users/trantanduc/.pub-cache/hosted/pub.dev/flutter_plugin_android_lifecycle-2.0.28/lib/
+fluttertoast
+2.12
+file:///Users/trantanduc/.pub-cache/hosted/pub.dev/fluttertoast-8.2.12/
+file:///Users/trantanduc/.pub-cache/hosted/pub.dev/fluttertoast-8.2.12/lib/
 google_mlkit_commons
 2.16
 file:///Users/trantanduc/.pub-cache/hosted/pub.dev/google_mlkit_commons-0.11.0/
@@ -83,9 +87,9 @@ http_parser
 file:///Users/trantanduc/.pub-cache/hosted/pub.dev/http_parser-4.1.2/
 file:///Users/trantanduc/.pub-cache/hosted/pub.dev/http_parser-4.1.2/lib/
 image
-3.0
-file:///Users/trantanduc/.pub-cache/hosted/pub.dev/image-4.5.4/
-file:///Users/trantanduc/.pub-cache/hosted/pub.dev/image-4.5.4/lib/
+2.15
+file:///Users/trantanduc/.pub-cache/hosted/pub.dev/image-4.3.0/
+file:///Users/trantanduc/.pub-cache/hosted/pub.dev/image-4.3.0/lib/
 leak_tracker
 3.2
 file:///Users/trantanduc/.pub-cache/hosted/pub.dev/leak_tracker-10.0.9/
@@ -178,10 +182,6 @@ plugin_platform_interface
 3.0
 file:///Users/trantanduc/.pub-cache/hosted/pub.dev/plugin_platform_interface-2.1.8/
 file:///Users/trantanduc/.pub-cache/hosted/pub.dev/plugin_platform_interface-2.1.8/lib/
-posix
-3.0
-file:///Users/trantanduc/.pub-cache/hosted/pub.dev/posix-6.0.3/
-file:///Users/trantanduc/.pub-cache/hosted/pub.dev/posix-6.0.3/lib/
 quiver
 2.17
 file:///Users/trantanduc/.pub-cache/hosted/pub.dev/quiver-3.2.2/
@@ -222,6 +222,10 @@ typed_data
 3.5
 file:///Users/trantanduc/.pub-cache/hosted/pub.dev/typed_data-1.4.0/
 file:///Users/trantanduc/.pub-cache/hosted/pub.dev/typed_data-1.4.0/lib/
+ultralytics_yolo
+3.8
+file:///Users/trantanduc/.pub-cache/hosted/pub.dev/ultralytics_yolo-0.1.35/
+file:///Users/trantanduc/.pub-cache/hosted/pub.dev/ultralytics_yolo-0.1.35/lib/
 vector_math
 2.14
 file:///Users/trantanduc/.pub-cache/hosted/pub.dev/vector_math-2.1.4/

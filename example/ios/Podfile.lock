@@ -1,7 +1,43 @@
 PODS:
   - camera_avfoundation (0.0.1):
     - Flutter
+  - DartCvIOS (4.12.0.0):
+    - DartCvIOS/calib3d (= 4.12.0.0)
+    - DartCvIOS/contrib (= 4.12.0.0)
+    - DartCvIOS/core (= 4.12.0.0)
+    - DartCvIOS/features2d (= 4.12.0.0)
+    - DartCvIOS/imgproc (= 4.12.0.0)
+    - DartCvIOS/objdetect (= 4.12.0.0)
+    - DartCvIOS/photo (= 4.12.0.0)
+    - DartCvIOS/stitching (= 4.12.0.0)
+    - DartCvIOS/video (= 4.12.0.0)
+  - DartCvIOS/calib3d (4.12.0.0):
+    - DartCvIOS/core
+  - DartCvIOS/contrib (4.12.0.0):
+    - DartCvIOS/core
+  - DartCvIOS/core (4.12.0.0)
+  - DartCvIOS/dnn (4.12.0.0):
+    - DartCvIOS/core
+  - DartCvIOS/features2d (4.12.0.0):
+    - DartCvIOS/core
+  - DartCvIOS/imgproc (4.12.0.0):
+    - DartCvIOS/core
+  - DartCvIOS/objdetect (4.12.0.0):
+    - DartCvIOS/core
+  - DartCvIOS/photo (4.12.0.0):
+    - DartCvIOS/core
+  - DartCvIOS/stitching (4.12.0.0):
+    - DartCvIOS/core
+  - DartCvIOS/video (4.12.0.0):
+    - DartCvIOS/core
+  - DartCvIOS/videoio (4.12.0.0):
+    - DartCvIOS/core
   - Flutter (1.0.0)
+  - flutter_onnxruntime (0.0.1):
+    - Flutter
+    - onnxruntime-objc (= 1.21.0)
+  - fluttertoast (0.0.2):
+    - Flutter
   - google_mlkit_commons (0.11.0):
     - Flutter
     - MLKitVision
@@ -62,6 +98,16 @@ PODS:
     - nanopb/encode (= 3.30910.0)
   - nanopb/decode (3.30910.0)
   - nanopb/encode (3.30910.0)
+  - onnxruntime-c (1.21.0)
+  - onnxruntime-objc (1.21.0):
+    - onnxruntime-objc/Core (= 1.21.0)
+  - onnxruntime-objc/Core (1.21.0):
+    - onnxruntime-c (= 1.21.0)
+  - opencv_dart (0.0.1):
+    - DartCvIOS (= 4.12.0.0)
+    - DartCvIOS/dnn (= 4.12.0.0)
+    - DartCvIOS/videoio (= 4.12.0.0)
+    - Flutter
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -96,10 +142,13 @@ PODS:
 DEPENDENCIES:
   - camera_avfoundation (from `.symlinks/plugins/camera_avfoundation/ios`)
   - Flutter (from `Flutter`)
+  - flutter_onnxruntime (from `.symlinks/plugins/flutter_onnxruntime/ios`)
+  - fluttertoast (from `.symlinks/plugins/fluttertoast/ios`)
   - google_mlkit_commons (from `.symlinks/plugins/google_mlkit_commons/ios`)
   - google_mlkit_text_recognition (from `.symlinks/plugins/google_mlkit_text_recognition/ios`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
   - integration_test (from `.symlinks/plugins/integration_test/ios`)
+  - opencv_dart (from `.symlinks/plugins/opencv_dart/ios`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
   - tflite_flutter (from `.symlinks/plugins/tflite_flutter/ios`)
@@ -107,6 +156,7 @@ DEPENDENCIES:
 
 SPEC REPOS:
   trunk:
+    - DartCvIOS
     - GoogleDataTransport
     - GoogleMLKit
     - GoogleToolboxForMac
@@ -118,6 +168,8 @@ SPEC REPOS:
     - MLKitTextRecognitionCommon
     - MLKitVision
     - nanopb
+    - onnxruntime-c
+    - onnxruntime-objc
     - PromisesObjC
     - TensorFlowLiteC
     - TensorFlowLiteSwift
@@ -127,6 +179,10 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/camera_avfoundation/ios"
   Flutter:
     :path: Flutter
+  flutter_onnxruntime:
+    :path: ".symlinks/plugins/flutter_onnxruntime/ios"
+  fluttertoast:
+    :path: ".symlinks/plugins/fluttertoast/ios"
   google_mlkit_commons:
     :path: ".symlinks/plugins/google_mlkit_commons/ios"
   google_mlkit_text_recognition:
@@ -135,6 +191,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/image_picker_ios/ios"
   integration_test:
     :path: ".symlinks/plugins/integration_test/ios"
+  opencv_dart:
+    :path: ".symlinks/plugins/opencv_dart/ios"
   path_provider_foundation:
     :path: ".symlinks/plugins/path_provider_foundation/darwin"
   permission_handler_apple:
@@ -146,7 +204,10 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   camera_avfoundation: adb0207d868b2d873e895371d88448399ab78d87
+  DartCvIOS: 3b4638e0f24b5f48a25378815618b9f8c1e87ad4
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
+  flutter_onnxruntime: efff71f2cc909a2ad1635b54fe25844574ab9f13
+  fluttertoast: 21eecd6935e7064cc1fcb733a4c5a428f3f24f0f
   google_mlkit_commons: 2544377e5503bf78ee7412ccfce0394c2dcb8a6b
   google_mlkit_text_recognition: c30828d00af79c10dc56bed2c6a4ca8b7dd40a50
   GoogleDataTransport: aae35b7ea0c09004c3797d53c8c41f66f219d6a7
@@ -162,6 +223,9 @@ SPEC CHECKSUMS:
   MLKitTextRecognitionCommon: cd44577a8c506fc6bba065096de03bec0d01a213
   MLKitVision: 45e79d68845a2de77e2dd4d7f07947f0ed157b0e
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
+  onnxruntime-c: ac65025f01072d25d7d394a2b43ac30d9397b260
+  onnxruntime-objc: 5fa03134356d47b642ec85b1023d9907a123d201
+  opencv_dart: 6a43b0c17bf70cb6b0c87fc182efe0c54cc19b4f
   path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
   permission_handler_apple: 9878588469a2b0d0fc1e048d9f43605f92e6cec2
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
@@ -170,6 +234,6 @@ SPEC CHECKSUMS:
   tflite_flutter: 9433d086a3060431bbc9f3c7c20d017db0e72d08
   water_meter_sdk: a9fbf28fa44a708d7fc702a9032ee8337ae3f63c
 
-PODFILE CHECKSUM: 1977f215efd3e647542dd9007f93c936f4743106
+PODFILE CHECKSUM: d0fce63a122d99510124d783c3545f64cd3aa6c6
 
 COCOAPODS: 1.16.2

@@ -18,6 +18,10 @@ dependencies:
   permission_handler: ^11.3.0
   tflite_flutter: ^0.11.0
   http: ^1.4.0
+  vector_math: ^2.1.4
+  path: ^1.9.0
+  fluttertoast: ^8.2.5
+  ultralytics_yolo: ^0.1.35
 
 dev_dependencies:
   flutter_test:
@@ -48,9 +52,10 @@ flutter:
         pluginClass: WaterMeterSdkPlugin
 
   # To add assets to your plugin package, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/water_model_2k_obb.onnx
+    - assets/ocr_model.onnx
+    - assets/test_images/
   #
   # For details regarding assets in packages, see
   # https://flutter.dev/to/asset-from-package

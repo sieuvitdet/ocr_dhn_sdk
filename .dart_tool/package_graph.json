@@ -9,13 +9,17 @@
       "dependencies": [
         "camera",
         "flutter",
+        "fluttertoast",
         "google_mlkit_text_recognition",
         "http",
         "image",
+        "path",
         "path_provider",
         "permission_handler",
         "plugin_platform_interface",
-        "tflite_flutter"
+        "tflite_flutter",
+        "ultralytics_yolo",
+        "vector_math"
       ],
       "devDependencies": [
         "flutter_lints",
@@ -55,6 +59,43 @@
         "test_api",
         "vector_math",
         "vm_service"
+      ]
+    },
+    {
+      "name": "ultralytics_yolo",
+      "version": "0.1.35",
+      "dependencies": [
+        "flutter",
+        "plugin_platform_interface"
+      ]
+    },
+    {
+      "name": "fluttertoast",
+      "version": "8.2.12",
+      "dependencies": [
+        "flutter",
+        "flutter_web_plugins",
+        "web"
+      ]
+    },
+    {
+      "name": "path",
+      "version": "1.9.1",
+      "dependencies": []
+    },
+    {
+      "name": "vector_math",
+      "version": "2.1.4",
+      "dependencies": []
+    },
+    {
+      "name": "http",
+      "version": "1.4.0",
+      "dependencies": [
+        "async",
+        "http_parser",
+        "meta",
+        "web"
       ]
     },
     {
@@ -107,7 +148,7 @@
     },
     {
       "name": "image",
-      "version": "4.5.4",
+      "version": "4.3.0",
       "dependencies": [
         "archive",
         "meta",
@@ -249,11 +290,6 @@
       ]
     },
     {
-      "name": "vector_math",
-      "version": "2.1.4",
-      "dependencies": []
-    },
-    {
       "name": "stack_trace",
       "version": "1.12.1",
       "dependencies": [
@@ -272,11 +308,6 @@
         "clock",
         "collection"
       ]
-    },
-    {
-      "name": "path",
-      "version": "1.9.1",
-      "dependencies": []
     },
     {
       "name": "matcher",
@@ -302,6 +333,33 @@
         "stream_channel",
         "string_scanner",
         "term_glyph"
+      ]
+    },
+    {
+      "name": "web",
+      "version": "1.1.1",
+      "dependencies": []
+    },
+    {
+      "name": "flutter_web_plugins",
+      "version": "0.0.0",
+      "dependencies": [
+        "characters",
+        "collection",
+        "flutter",
+        "material_color_utilities",
+        "meta",
+        "vector_math"
+      ]
+    },
+    {
+      "name": "http_parser",
+      "version": "4.1.2",
+      "dependencies": [
+        "collection",
+        "source_span",
+        "string_scanner",
+        "typed_data"
       ]
     },
     {
@@ -463,11 +521,10 @@
     },
     {
       "name": "archive",
-      "version": "4.0.7",
+      "version": "3.6.1",
       "dependencies": [
         "crypto",
-        "path",
-        "posix"
+        "path"
       ]
     },
     {
@@ -483,20 +540,10 @@
       "dependencies": []
     },
     {
-      "name": "web",
-      "version": "1.1.1",
-      "dependencies": []
-    },
-    {
-      "name": "flutter_web_plugins",
-      "version": "0.0.0",
+      "name": "typed_data",
+      "version": "1.4.0",
       "dependencies": [
-        "characters",
-        "collection",
-        "flutter",
-        "material_color_utilities",
-        "meta",
-        "vector_math"
+        "collection"
       ]
     },
     {
@@ -533,45 +580,9 @@
       ]
     },
     {
-      "name": "posix",
-      "version": "6.0.3",
-      "dependencies": [
-        "ffi",
-        "meta",
-        "path"
-      ]
-    },
-    {
       "name": "crypto",
       "version": "3.0.6",
       "dependencies": [
-        "typed_data"
-      ]
-    },
-    {
-      "name": "typed_data",
-      "version": "1.4.0",
-      "dependencies": [
-        "collection"
-      ]
-    },
-    {
-      "name": "http",
-      "version": "1.4.0",
-      "dependencies": [
-        "async",
-        "http_parser",
-        "meta",
-        "web"
-      ]
-    },
-    {
-      "name": "http_parser",
-      "version": "4.1.2",
-      "dependencies": [
-        "collection",
-        "source_span",
-        "string_scanner",
         "typed_data"
       ]
     }
