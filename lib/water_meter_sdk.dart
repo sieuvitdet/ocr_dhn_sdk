@@ -16,11 +16,14 @@ class WaterMeterSdk {
     }
 
   Future<WaterMeterResult?> processWaterMeterImage(Uint8List imageBytes, {bool isOnline = false}) async {
-    DetectionResult? resultImage = await detector.detect(imageBytes);
-    if (resultImage != null) {
-      if (resultImage.boxes.isNotEmpty && resultImage.processedImage != null) {
+    DetectionResult? resultImage;
+    img.Image? cropped;
+    
+    try {
+      resultImage = await detector.detect(imageBytes);
+      if (resultImage != null && resultImage.boxes.isNotEmpty && resultImage.processedImage != null) {
         final box = resultImage.boxes.first;
-        final cropped = img.copyCrop(
+        cropped = img.copyCrop(
           resultImage.processedImage!,
           x: box.x1,
           y: box.y1,
@@ -28,24 +31,38 @@ class WaterMeterSdk {
           height: box.y2 - box.y1,
         );
         final croppedBytes = img.encodeJpg(cropped);
+        
+        // Clear cropped image reference early
+        cropped = null;
+        
         if (isOnline) {
-        final tempFile = await saveBytesToTempFile(croppedBytes, 'cropped.jpg');
+          final tempFile = await saveBytesToTempFile(croppedBytes, 'cropped.jpg');
 
-        final ocrApi = GetNumberOCR();
-        final result = await ocrApi.ocrImage(tempFile);
-        return WaterMeterResult(
-          imageBytes: croppedBytes,
+          final ocrApi = GetNumberOCR();
+          final result = await ocrApi.ocrImage(tempFile);
+          
+          // Clean up temp file
+          try {
+            await tempFile.delete();
+          } catch (e) {
+            // Ignore cleanup errors
+          }
+          
+          return WaterMeterResult(
+            imageBytes: croppedBytes,
             reading: result ?? '',
             confidence: 0,
           );
         } else {
           return await processWaterMeterImageAfterDetect(croppedBytes);
         }
-      } else {
-        return null;
       }
+      return null;
+    } finally {
+      // Clear all references to help GC
+      cropped = null;
+      resultImage = null;
     }
-    return null;
   }
 
   Future<File> saveBytesToTempFile(Uint8List bytes, String filename) async {

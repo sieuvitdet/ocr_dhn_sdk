@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:typed_data';
 import 'dart:math' as math;
 import 'package:flutter/services.dart';
@@ -24,13 +23,11 @@ class WaterMeterOcrServiceTfLite {
     try {
       final modelPath = 'assets/models/water_model_detect.tflite';
       
-      // Load with options for better performance
       final options = InterpreterOptions()
         ..threads = 4; 
       
       _interpreter = await Interpreter.fromAsset(modelPath, options: options);
       
-      // Get tensor info
       _inputShape = _interpreter.getInputTensor(0).shape;
       _outputShape = _interpreter.getOutputTensor(0).shape;
       
@@ -83,11 +80,14 @@ class WaterMeterOcrServiceTfLite {
       // Apply NMS
       final filteredBoxes = _nonMaxSuppression(boxes, nmsThreshold);
 
-      // Không vẽ bounding box nữa, processedImage là ảnh gốc
+      // Return a copy of the image to avoid memory issues
       img.Image? processedImage;
       if (returnProcessedImage) {
-        processedImage = rawImage;
+        processedImage = img.Image.from(rawImage);
       }
+
+      // Clear reference to original image to free memory
+      // Note: Dart Image objects don't have dispose method, rely on GC
 
       return DetectionResult(
         boxes: filteredBoxes,
@@ -122,6 +122,9 @@ class WaterMeterOcrServiceTfLite {
         buffer[bufferIndex++] = pixel.b / _normalizeValue;
       }
     }
+
+    // Clear reference to resized image to free memory
+    // Note: Dart Image objects don't have dispose method, rely on GC
 
     return buffer;
   }
@@ -161,7 +164,7 @@ class WaterMeterOcrServiceTfLite {
     final confidences = output[4];
 
     for (int i = 0; i < confidences.length; i++) {
-      if (confidences[i] > confidenceThreshold) {
+      if (confidences[i] > confidenceThreshold && confidences[i] < 1) {
         // Convert from normalized coordinates
         final xCenter = xCenters[i] * imageWidth;
         final yCenter = yCenters[i] * imageHeight;
@@ -234,35 +237,6 @@ class WaterMeterOcrServiceTfLite {
     return intersection / union;
   }
 
-  img.Image _drawDetections(img.Image image, List<BoundingBox> boxes) {
-    final result = img.Image.from(image);
-    
-    for (final box in boxes) {
-      // Draw bounding box
-      img.drawRect(
-        result,
-        x1: box.x1,
-        y1: box.y1,
-        x2: box.x2,
-        y2: box.y2,
-        color: img.ColorRgb8(0, 255, 0),
-        thickness: 2,
-      );
-
-      // Draw label with confidence
-      final label = "${box.label}: ${(box.confidence * 100).toStringAsFixed(1)}%";
-      img.drawString(
-        result,
-        label,
-        font: img.arial14,
-        x: box.x1,
-        y: math.max(0, box.y1 - 20),
-        color: img.ColorRgb8(0, 255, 0),
-      );
-    }
-
-    return result;
-  }
 
   void dispose() {
     if (_isModelLoaded) {

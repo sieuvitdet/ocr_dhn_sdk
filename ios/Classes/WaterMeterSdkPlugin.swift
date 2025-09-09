@@ -9,7 +9,8 @@ public class WaterMeterSdkPlugin: NSObject, FlutterPlugin {
     registrar.addMethodCallDelegate(instance, channel: channel)
   }
 
-  public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    @available(iOS 12.0, *)
+    public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     switch call.method {
     case "getPlatformVersion":
       result("iOS " + UIDevice.current.systemVersion)
@@ -22,15 +23,22 @@ public class WaterMeterSdkPlugin: NSObject, FlutterPlugin {
         return
       }
       
-      processImage(imagePath: imagePath) { processResult in
-        result(processResult)
-      }
+            if #available(iOS 13.0, *) {
+                processImage(imagePath: imagePath) { processResult in
+                    result(processResult)
+                }
+            } else {
+                // Fallback on earlier versions
+            }
     default:
       result(FlutterMethodNotImplemented)
     }
   }
+    
+    
   
-  private func processImage(imagePath: String, completion: @escaping ([String: Any]) -> Void) {
+    @available(iOS 13.0, *)
+    private func processImage(imagePath: String, completion: @escaping ([String: Any]) -> Void) {
     guard let image = UIImage(contentsOfFile: imagePath),
           let cgImage = image.cgImage else {
       completion(["error": "Failed to load image"])

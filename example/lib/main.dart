@@ -160,7 +160,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } catch (e) {
       debugPrint('Error picking image: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar( 
         SnackBar(content: Text('Error picking image: $e')),
       );
     }
@@ -265,8 +265,8 @@ class _HomeScreenState extends State<HomeScreen> {
             if (selectedImage != null)
                 Image.memory(selectedImage!,
                 fit: BoxFit.contain,
-                height: 200,
-                width: 200,),
+                height: MediaQuery.of(context).size.height*0.5,
+                width: MediaQuery.of(context).size.width,),
             
             // Buttons
             Row(
@@ -297,7 +297,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: _selectedImage != null && !_isProcessing ? _processImage : null,
+                    // onPressed: _selectedImage != null && !_isProcessing ? _processImage : null,
+                    onPressed: _processImage,
                     icon: const Icon(Icons.analytics),
                     label: Text(_isProcessing ? 'Processing...' : 'Analyze'),
                     style: ElevatedButton.styleFrom(
