@@ -98,10 +98,6 @@ class WaterMeterSdk {
               });
               print('  --- $boxes');
 
-              if (Platform.isIOS) {
-               Fluttertoast.showToast(msg: '${boxes['class']} ${boxes['confidence']}');
-              }
-
           }
 
           if (points.isNotEmpty && points.length == 4 && (boxes['confidence'] as num).toDouble() > 0.2 && (boxes['confidence'] as num).toDouble() < 1) { 
