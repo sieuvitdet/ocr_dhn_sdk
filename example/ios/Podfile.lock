@@ -155,32 +155,32 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/water_meter_sdk/ios"
 
 SPEC CHECKSUMS:
-  camera_avfoundation: adb0207d868b2d873e895371d88448399ab78d87
+  camera_avfoundation: be3be85408cd4126f250386828e9b1dfa40ab436
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
-  fluttertoast: 21eecd6935e7064cc1fcb733a4c5a428f3f24f0f
-  google_mlkit_commons: 2544377e5503bf78ee7412ccfce0394c2dcb8a6b
-  google_mlkit_text_recognition: c30828d00af79c10dc56bed2c6a4ca8b7dd40a50
+  fluttertoast: 2c67e14dce98bbdb200df9e1acf610d7a6264ea1
+  google_mlkit_commons: 2abe6a70e1824e431d16a51085cb475b672c8aab
+  google_mlkit_text_recognition: ec2122ec89bfe0d7200763336a6e4ef44810674c
   GoogleDataTransport: aae35b7ea0c09004c3797d53c8c41f66f219d6a7
   GoogleMLKit: eff9e23ec1d90ea4157a1ee2e32a4f610c5b3318
   GoogleToolboxForMac: d1a2cbf009c453f4d6ded37c105e2f67a32206d8
   GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1
   GTMSessionFetcher: 5aea5ba6bd522a239e236100971f10cb71b96ab6
-  image_picker_ios: c560581cceedb403a6ff17f2f816d7fea1421fc1
-  integration_test: 252f60fa39af5e17c3aa9899d35d908a0721b573
+  image_picker_ios: 7fe1ff8e34c1790d6fff70a32484959f563a928a
+  integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
   MLImage: 0ad1c5f50edd027672d8b26b0fee78a8b4a0fc56
   MLKitCommon: 07c2c33ae5640e5380beaaa6e4b9c249a205542d
   MLKitTextRecognition: 3b41f3ff084a79afb214408d25d2068d77ab322c
   MLKitTextRecognitionCommon: cd44577a8c506fc6bba065096de03bec0d01a213
   MLKitVision: 45e79d68845a2de77e2dd4d7f07947f0ed157b0e
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
-  path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
-  permission_handler_apple: 9878588469a2b0d0fc1e048d9f43605f92e6cec2
+  path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
+  permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   TensorFlowLiteC: 20785a69299185a379ba9852b6625f00afd7984a
   TensorFlowLiteSwift: 3a4928286e9e35bdd3e17970f48e53c80d25e793
-  tflite_flutter: 9433d086a3060431bbc9f3c7c20d017db0e72d08
-  ultralytics_yolo: c550236eb35c549df15ce6dfca979414d7b70248
-  water_meter_sdk: a9fbf28fa44a708d7fc702a9032ee8337ae3f63c
+  tflite_flutter: 64b192e11352fe36943ab6656e1d49207f1a5595
+  ultralytics_yolo: 650ea1417a5b3ef9b1acc55e6edef5385018d3b5
+  water_meter_sdk: bb114b51665dcff5516c7a6d1779abcd61f8ffde
 
 PODFILE CHECKSUM: 4fda5597cef824f41d3b999a5ee19431ebb400d6
 

@@ -91,7 +91,14 @@ class WaterMeterSdkUltralyticsYolo {
             maxY = maxY > y ? maxY : y;
           }
 
-          if (points.isNotEmpty && points.length == 4) { 
+          detections.add({
+                'class': boxes['class'],
+                'confidence': (boxes['confidence'] as num).toDouble(),
+                'points': points,
+              });
+              print('  --- $boxes');
+
+          if (points.isNotEmpty && points.length == 4 && (boxes['confidence'] as num).toDouble() > 0.2 && (boxes['confidence'] as num).toDouble() < 1) { 
             imageBytesAfter = cropImageFromOBB(resizedImageBytes, points);
             return imageBytesAfter;
           }
@@ -132,7 +139,7 @@ class WaterMeterSdkUltralyticsYolo {
     }
 
     // Add some padding
-    final padding = 15;
+    final padding = Platform.isIOS ? 15 : 0;
     minX = math.max(0, minX - padding);
     minY = math.max(0, minY - padding);
     maxX = math.min(image.width.toDouble(), maxX + padding);

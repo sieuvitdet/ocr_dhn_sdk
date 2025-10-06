@@ -19,115 +19,115 @@ class WaterMeterOcrServiceTfLite {
   
   bool _isModelLoaded = false;
 
-  Future<void> loadModel() async {
-    try {
-      final modelPath = 'assets/models/water_model_detect.tflite';
+  // Future<void> loadModel() async {
+  //   try {
+  //     final modelPath = 'assets/models/water_model_detect.tflite';
       
-      final options = InterpreterOptions()
-        ..threads = 4; 
+  //     final options = InterpreterOptions()
+  //       ..threads = 4; 
       
-      _interpreter = await Interpreter.fromAsset(modelPath, options: options);
+  //     _interpreter = await Interpreter.fromAsset(modelPath, options: options);
       
-      _inputShape = _interpreter.getInputTensor(0).shape;
-      _outputShape = _interpreter.getOutputTensor(0).shape;
+  //     _inputShape = _interpreter.getInputTensor(0).shape;
+  //     _outputShape = _interpreter.getOutputTensor(0).shape;
       
-      _isModelLoaded = true;
+  //     _isModelLoaded = true;
       
-      print("✅ Model loaded successfully");
-      print("📊 Input shape: $_inputShape");
-      print("📊 Output shape: $_outputShape");
-    } catch (e) {
-      print("❌ Error loading model: $e");
-      throw Exception("Failed to load water detection model: $e");
-    }
-  }
+  //     print("✅ Model loaded successfully");
+  //     print("📊 Input shape: $_inputShape");
+  //     print("📊 Output shape: $_outputShape");
+  //   } catch (e) {
+  //     print("❌ Error loading model: $e");
+  //     throw Exception("Failed to load water detection model: $e");
+  //   }
+  // }
 
-  Future<DetectionResult?> detect(
-    Uint8List imageFile, {
-    double confidenceThreshold = _defaultConfidenceThreshold,
-    double nmsThreshold = _defaultNmsThreshold,
-    bool returnProcessedImage = true,
-  }) async {
-    if (!_isModelLoaded) {
-      throw Exception("Model not loaded. Call loadModel() first.");
-    }
+  // Future<DetectionResult?> detect(
+  //   Uint8List imageFile, {
+  //   double confidenceThreshold = _defaultConfidenceThreshold,
+  //   double nmsThreshold = _defaultNmsThreshold,
+  //   bool returnProcessedImage = true,
+  // }) async {
+  //   if (!_isModelLoaded) {
+  //     throw Exception("Model not loaded. Call loadModel() first.");
+  //   }
 
-    try {
-      final rawImage = img.decodeImage(imageFile);
-      if (rawImage == null) {
-        print("❌ Failed to decode image");
-        return null;
-      }
+  //   try {
+  //     final rawImage = img.decodeImage(imageFile);
+  //     if (rawImage == null) {
+  //       print("❌ Failed to decode image");
+  //       return null;
+  //     }
 
-      // Store original dimensions
-      final originalWidth = rawImage.width;
-      final originalHeight = rawImage.height;
+  //     // Store original dimensions
+  //     final originalWidth = rawImage.width;
+  //     final originalHeight = rawImage.height;
 
-      // Preprocess image
-      final inputTensor = _preprocessImage(rawImage);
+  //     // Preprocess image
+  //     final inputTensor = _preprocessImage(rawImage);
 
-      // Run inference
-      final detections = await _runInference(inputTensor);
+  //     // Run inference
+  //     final detections = await _runInference(inputTensor);
 
-      // Process detections
-      final boxes = _processDetections(
-        detections,
-        originalWidth,
-        originalHeight,
-        confidenceThreshold,
-      );
+  //     // Process detections
+  //     final boxes = _processDetections(
+  //       detections,
+  //       originalWidth,
+  //       originalHeight,
+  //       confidenceThreshold,
+  //     );
 
-      // Apply NMS
-      final filteredBoxes = _nonMaxSuppression(boxes, nmsThreshold);
+  //     // Apply NMS
+  //     final filteredBoxes = _nonMaxSuppression(boxes, nmsThreshold);
 
-      // Return a copy of the image to avoid memory issues
-      img.Image? processedImage;
-      if (returnProcessedImage) {
-        processedImage = img.Image.from(rawImage);
-      }
+  //     // Return a copy of the image to avoid memory issues
+  //     img.Image? processedImage;
+  //     if (returnProcessedImage) {
+  //       processedImage = img.Image.from(rawImage);
+  //     }
 
-      // Clear reference to original image to free memory
-      // Note: Dart Image objects don't have dispose method, rely on GC
+  //     // Clear reference to original image to free memory
+  //     // Note: Dart Image objects don't have dispose method, rely on GC
 
-      return DetectionResult(
-        boxes: filteredBoxes,
-        processedImage: processedImage,
-        inferenceTime: 0, // You can add timing if needed
-      );
-    } catch (e) {
-      print("❌ Detection error: $e");
-      return null;
-    }
-  }
+  //     return DetectionResult(
+  //       boxes: filteredBoxes,
+  //       processedImage: processedImage,
+  //       inferenceTime: 0, // You can add timing if needed
+  //     );
+  //   } catch (e) {
+  //     print("❌ Detection error: $e");
+  //     return null;
+  //   }
+  // }
 
-  Float32List _preprocessImage(img.Image image) {
-    // Resize image to model input size
-    final resized = img.copyResize(
-      image,
-      width: _modelInputSize,
-      height: _modelInputSize,
-      interpolation: img.Interpolation.linear,
-    );
+  // Float32List _preprocessImage(img.Image image) {
+  //   // Resize image to model input size
+  //   final resized = img.copyResize(
+  //     image,
+  //     width: _modelInputSize,
+  //     height: _modelInputSize,
+  //     interpolation: img.Interpolation.linear,
+  //   );
 
-    // Convert to Float32List in correct format
-    final buffer = Float32List(_modelInputSize * _modelInputSize * 3);
-    var bufferIndex = 0;
+  //   // Convert to Float32List in correct format
+  //   final buffer = Float32List(_modelInputSize * _modelInputSize * 3);
+  //   var bufferIndex = 0;
 
-    // Convert to RGB and normalize
-    for (var y = 0; y < _modelInputSize; y++) {
-      for (var x = 0; x < _modelInputSize; x++) {
-        final pixel = resized.getPixel(x, y);
-        buffer[bufferIndex++] = pixel.r / _normalizeValue;
-        buffer[bufferIndex++] = pixel.g / _normalizeValue;
-        buffer[bufferIndex++] = pixel.b / _normalizeValue;
-      }
-    }
+  //   // Convert to RGB and normalize
+  //   for (var y = 0; y < _modelInputSize; y++) {
+  //     for (var x = 0; x < _modelInputSize; x++) {
+  //       final pixel = resized.getPixel(x, y);
+  //       buffer[bufferIndex++] = pixel.r / _normalizeValue;
+  //       buffer[bufferIndex++] = pixel.g / _normalizeValue;
+  //       buffer[bufferIndex++] = pixel.b / _normalizeValue;
+  //     }
+  //   }
 
-    // Clear reference to resized image to free memory
-    // Note: Dart Image objects don't have dispose method, rely on GC
+  //   // Clear reference to resized image to free memory
+  //   // Note: Dart Image objects don't have dispose method, rely on GC
 
-    return buffer;
-  }
+  //   return buffer;
+  // }
 
   Future<List<List<double>>> _runInference(Float32List inputTensor) async {
     // Reshape input

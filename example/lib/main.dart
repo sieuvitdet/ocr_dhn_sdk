@@ -38,26 +38,24 @@ class _HomeScreenState extends State<HomeScreen> {
   WaterMeterResult? _lastResult;
   bool _isProcessing = false;
   File? _selectedImage;
-  bool _hasPermission = false;
+  bool _hasPermissionPhoto = false;
+  bool _hasPermissionCamera = false;
    Uint8List? selectedImage;
 
   @override
   void initState() {
     super.initState();
 
-    if (Platform.isIOS) {
-      _yoloService.init();
-    } else if (Platform.isAndroid) {
-      _waterMeterSdkPlugin.init();
-    }
+    _yoloService.init();
 
     _checkPhotoPermission();
+    _checkCameraPermission();
   }
 
   Future<void> _checkPhotoPermission() async {
     final status = await Permission.photos.status;
     setState(() {
-      _hasPermission = status.isGranted;
+      _hasPermissionPhoto = status.isGranted;
     });
   }
   
@@ -66,7 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final status = await Permission.photos.request();
     
     setState(() {
-      _hasPermission = status.isGranted;
+      _hasPermissionCamera = status.isGranted;
     });
     
     if (status.isPermanentlyDenied && mounted) {
@@ -81,7 +79,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () {
                 Navigator.pop(context);
                 setState(() {
-                  _hasPermission = false;
+                  _hasPermissionPhoto = false;
                 });
               },
               child: const Text('Cancel'),
@@ -93,7 +91,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 if (!mounted) return;
                 final newStatus = await Permission.photos.status;
                 setState(() {
-                  _hasPermission = newStatus.isGranted;
+                  _hasPermissionPhoto = newStatus.isGranted;
                 });
               },
               child: const Text('Open Settings'),
@@ -104,15 +102,23 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _checkCameraPermission() async {
+    final status = await Permission.camera.status;
+    setState(() {
+      _hasPermissionCamera = status.isGranted;
+    });
+  }
+
   Future<void> _requestCameraPermission() async {
+    print('requestCameraPermission');
     final status = await Permission.camera.request();
     setState(() {
-      _hasPermission = status.isGranted;
+      _hasPermissionCamera = status.isGranted;
     });
   }
 
   Future<void> _pickImageFromCamera() async {
-    if (!_hasPermission) {
+    if (!_hasPermissionCamera) {
       await _requestCameraPermission();
       return;
     }
@@ -140,7 +146,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _pickImageFromGallery() async {
-    if (!_hasPermission) {
+    if (!_hasPermissionPhoto) {
       await _requestPhotoPermission();
       return;
     }
@@ -177,11 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     try {
       WaterMeterResult? result;
-      if (Platform.isIOS) {
-        result = await _yoloService.processWaterMeterImage(await _selectedImage!.readAsBytes());
-      } else {
-        result = await _waterMeterSdkPlugin.processWaterMeterImage(await _selectedImage!.readAsBytes());
-      }
+      result = await _yoloService.processWaterMeterImage(await _selectedImage!.readAsBytes(), isOnline: true);
       
       if (mounted) {
         setState(() {
@@ -273,9 +275,9 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: _hasPermission ? _pickImageFromGallery : _requestPhotoPermission,
+                    onPressed: _hasPermissionPhoto ? _pickImageFromGallery : _requestPhotoPermission,
                     icon: const Icon(Icons.photo_library),
-                    label: Text(_hasPermission ? 'Chọn ảnh' : 'Grant Permission'),
+                    label: Text(_hasPermissionPhoto ? 'Chọn ảnh' : 'Grant Permission'),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
@@ -285,9 +287,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: _hasPermission ? _pickImageFromCamera : _requestPhotoPermission,
+                    onPressed: _hasPermissionCamera ? _pickImageFromCamera : _requestCameraPermission,
                     icon: const Icon(Icons.camera),
-                    label: Text(_hasPermission ? 'Chụp ảnh' : 'Grant Permission'),
+                    label: Text(_hasPermissionCamera ? 'Chụp ảnh' : 'Grant Permission'),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
