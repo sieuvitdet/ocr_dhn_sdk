@@ -3,7 +3,7 @@
   "packages": [
     {
       "name": "archive",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/archive-3.6.1",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/archive-4.0.7",
       "packageUri": "lib/",
       "languageVersion": "3.0"
     },
@@ -27,27 +27,27 @@
     },
     {
       "name": "camera_android",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/camera_android-0.10.10+3",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/camera_android-0.10.10+14",
       "packageUri": "lib/",
-      "languageVersion": "3.6"
+      "languageVersion": "3.9"
     },
     {
       "name": "camera_avfoundation",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/camera_avfoundation-0.9.20+1",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/camera_avfoundation-0.9.23",
       "packageUri": "lib/",
-      "languageVersion": "3.6"
+      "languageVersion": "3.9"
     },
     {
       "name": "camera_platform_interface",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/camera_platform_interface-2.10.0",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/camera_platform_interface-2.12.0",
       "packageUri": "lib/",
-      "languageVersion": "3.4"
+      "languageVersion": "3.7"
     },
     {
       "name": "camera_web",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/camera_web-0.3.5",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/camera_web-0.3.5+3",
       "packageUri": "lib/",
-      "languageVersion": "3.3"
+      "languageVersion": "3.8"
     },
     {
       "name": "characters",
@@ -62,6 +62,12 @@
       "languageVersion": "3.4"
     },
     {
+      "name": "code_assets",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/code_assets-1.0.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.9"
+    },
+    {
       "name": "collection",
       "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/collection-1.19.1",
       "packageUri": "lib/",
@@ -69,13 +75,13 @@
     },
     {
       "name": "cross_file",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/cross_file-0.3.4+2",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/cross_file-0.3.5+2",
       "packageUri": "lib/",
-      "languageVersion": "3.3"
+      "languageVersion": "3.8"
     },
     {
       "name": "crypto",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/crypto-3.0.6",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/crypto-3.0.7",
       "packageUri": "lib/",
       "languageVersion": "3.4"
     },
@@ -87,15 +93,45 @@
     },
     {
       "name": "ffi",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/ffi-2.1.3",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/ffi-2.1.5",
       "packageUri": "lib/",
-      "languageVersion": "3.3"
+      "languageVersion": "3.7"
+    },
+    {
+      "name": "file",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/file-7.0.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
+    },
+    {
+      "name": "file_selector_linux",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/file_selector_linux-0.9.4",
+      "packageUri": "lib/",
+      "languageVersion": "3.8"
+    },
+    {
+      "name": "file_selector_macos",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/file_selector_macos-0.9.5",
+      "packageUri": "lib/",
+      "languageVersion": "3.9"
+    },
+    {
+      "name": "file_selector_platform_interface",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/file_selector_platform_interface-2.7.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.7"
+    },
+    {
+      "name": "file_selector_windows",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/file_selector_windows-0.9.3+5",
+      "packageUri": "lib/",
+      "languageVersion": "3.8"
     },
     {
       "name": "flutter",
-      "rootUri": "file:///Users/trantanduc/Desktop/flutterNewVerson/develope/flutter_3.32.1/flutter/packages/flutter",
+      "rootUri": "file:///Users/trantanduc/Desktop/flutterNewVerson/develope/flutter3.38.6_arm64/packages/flutter",
       "packageUri": "lib/",
-      "languageVersion": "3.7"
+      "languageVersion": "3.8"
     },
     {
       "name": "flutter_lints",
@@ -105,43 +141,55 @@
     },
     {
       "name": "flutter_plugin_android_lifecycle",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/flutter_plugin_android_lifecycle-2.0.28",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/flutter_plugin_android_lifecycle-2.0.33",
       "packageUri": "lib/",
-      "languageVersion": "3.6"
+      "languageVersion": "3.9"
     },
     {
       "name": "flutter_test",
-      "rootUri": "file:///Users/trantanduc/Desktop/flutterNewVerson/develope/flutter_3.32.1/flutter/packages/flutter_test",
+      "rootUri": "file:///Users/trantanduc/Desktop/flutterNewVerson/develope/flutter3.38.6_arm64/packages/flutter_test",
       "packageUri": "lib/",
-      "languageVersion": "3.7"
+      "languageVersion": "3.8"
     },
     {
       "name": "flutter_web_plugins",
-      "rootUri": "file:///Users/trantanduc/Desktop/flutterNewVerson/develope/flutter_3.32.1/flutter/packages/flutter_web_plugins",
+      "rootUri": "file:///Users/trantanduc/Desktop/flutterNewVerson/develope/flutter3.38.6_arm64/packages/flutter_web_plugins",
       "packageUri": "lib/",
-      "languageVersion": "3.7"
+      "languageVersion": "3.8"
     },
     {
       "name": "fluttertoast",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/fluttertoast-8.2.12",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/fluttertoast-8.2.14",
       "packageUri": "lib/",
       "languageVersion": "2.12"
     },
     {
-      "name": "google_mlkit_commons",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/google_mlkit_commons-0.11.0",
+      "name": "glob",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/glob-2.1.3",
       "packageUri": "lib/",
-      "languageVersion": "2.16"
+      "languageVersion": "3.3"
+    },
+    {
+      "name": "google_mlkit_commons",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/google_mlkit_commons-0.11.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.8"
     },
     {
       "name": "google_mlkit_text_recognition",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/google_mlkit_text_recognition-0.15.0",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/google_mlkit_text_recognition-0.15.1",
       "packageUri": "lib/",
-      "languageVersion": "2.16"
+      "languageVersion": "3.8"
+    },
+    {
+      "name": "hooks",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/hooks-1.0.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.9"
     },
     {
       "name": "http",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/http-1.4.0",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/http-1.6.0",
       "packageUri": "lib/",
       "languageVersion": "3.4"
     },
@@ -153,25 +201,73 @@
     },
     {
       "name": "image",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/image-4.3.0",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/image-4.7.2",
       "packageUri": "lib/",
-      "languageVersion": "2.15"
+      "languageVersion": "3.0"
+    },
+    {
+      "name": "image_picker",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/image_picker-1.2.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.7"
+    },
+    {
+      "name": "image_picker_android",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/image_picker_android-0.8.13+14",
+      "packageUri": "lib/",
+      "languageVersion": "3.9"
+    },
+    {
+      "name": "image_picker_for_web",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/image_picker_for_web-3.1.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.8"
+    },
+    {
+      "name": "image_picker_ios",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/image_picker_ios-0.8.13+6",
+      "packageUri": "lib/",
+      "languageVersion": "3.10"
+    },
+    {
+      "name": "image_picker_linux",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/image_picker_linux-0.2.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.6"
+    },
+    {
+      "name": "image_picker_macos",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/image_picker_macos-0.2.2+1",
+      "packageUri": "lib/",
+      "languageVersion": "3.9"
+    },
+    {
+      "name": "image_picker_platform_interface",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/image_picker_platform_interface-2.11.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.7"
+    },
+    {
+      "name": "image_picker_windows",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/image_picker_windows-0.2.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.6"
     },
     {
       "name": "leak_tracker",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/leak_tracker-10.0.9",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/leak_tracker-11.0.2",
       "packageUri": "lib/",
       "languageVersion": "3.2"
     },
     {
       "name": "leak_tracker_flutter_testing",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/leak_tracker_flutter_testing-3.0.9",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/leak_tracker_flutter_testing-3.0.10",
       "packageUri": "lib/",
       "languageVersion": "3.2"
     },
     {
       "name": "leak_tracker_testing",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/leak_tracker_testing-3.0.1",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/leak_tracker_testing-3.0.2",
       "packageUri": "lib/",
       "languageVersion": "3.2"
     },
@@ -180,6 +276,12 @@
       "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/lints-5.1.1",
       "packageUri": "lib/",
       "languageVersion": "3.6"
+    },
+    {
+      "name": "logging",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/logging-1.3.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
     },
     {
       "name": "matcher",
@@ -195,9 +297,27 @@
     },
     {
       "name": "meta",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/meta-1.16.0",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/meta-1.17.0",
       "packageUri": "lib/",
-      "languageVersion": "2.12"
+      "languageVersion": "3.5"
+    },
+    {
+      "name": "mime",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/mime-2.0.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.2"
+    },
+    {
+      "name": "native_toolchain_c",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/native_toolchain_c-0.17.4",
+      "packageUri": "lib/",
+      "languageVersion": "3.9"
+    },
+    {
+      "name": "objective_c",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/objective_c-9.2.5",
+      "packageUri": "lib/",
+      "languageVersion": "3.10"
     },
     {
       "name": "path",
@@ -213,15 +333,15 @@
     },
     {
       "name": "path_provider_android",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/path_provider_android-2.2.17",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/path_provider_android-2.2.22",
       "packageUri": "lib/",
-      "languageVersion": "3.6"
+      "languageVersion": "3.9"
     },
     {
       "name": "path_provider_foundation",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/path_provider_foundation-2.4.1",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/path_provider_foundation-2.6.0",
       "packageUri": "lib/",
-      "languageVersion": "3.3"
+      "languageVersion": "3.10"
     },
     {
       "name": "path_provider_linux",
@@ -279,9 +399,9 @@
     },
     {
       "name": "petitparser",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/petitparser-6.0.2",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/petitparser-7.0.1",
       "packageUri": "lib/",
-      "languageVersion": "3.2"
+      "languageVersion": "3.8"
     },
     {
       "name": "platform",
@@ -296,16 +416,22 @@
       "languageVersion": "3.0"
     },
     {
-      "name": "quiver",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/quiver-3.2.2",
+      "name": "posix",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/posix-6.0.3",
       "packageUri": "lib/",
-      "languageVersion": "2.17"
+      "languageVersion": "3.0"
+    },
+    {
+      "name": "pub_semver",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/pub_semver-2.2.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
     },
     {
       "name": "sky_engine",
-      "rootUri": "file:///Users/trantanduc/Desktop/flutterNewVerson/develope/flutter_3.32.1/flutter/bin/cache/pkg/sky_engine",
+      "rootUri": "file:///Users/trantanduc/Desktop/flutterNewVerson/develope/flutter3.38.6_arm64/bin/cache/pkg/sky_engine",
       "packageUri": "lib/",
-      "languageVersion": "3.7"
+      "languageVersion": "3.8"
     },
     {
       "name": "source_span",
@@ -345,15 +471,9 @@
     },
     {
       "name": "test_api",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/test_api-0.7.4",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/test_api-0.7.7",
       "packageUri": "lib/",
       "languageVersion": "3.5"
-    },
-    {
-      "name": "tflite_flutter",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/tflite_flutter-0.11.0",
-      "packageUri": "lib/",
-      "languageVersion": "3.3"
     },
     {
       "name": "typed_data",
@@ -363,21 +483,21 @@
     },
     {
       "name": "ultralytics_yolo",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/ultralytics_yolo-0.1.35",
+      "rootUri": "../packages/ultralytics_yolo",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
     {
       "name": "vector_math",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/vector_math-2.1.4",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/vector_math-2.2.0",
       "packageUri": "lib/",
-      "languageVersion": "2.14"
+      "languageVersion": "3.1"
     },
     {
       "name": "vm_service",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/vm_service-15.0.0",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/vm_service-15.0.2",
       "packageUri": "lib/",
-      "languageVersion": "3.3"
+      "languageVersion": "3.5"
     },
     {
       "name": "web",
@@ -393,9 +513,15 @@
     },
     {
       "name": "xml",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/xml-6.5.0",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/xml-6.6.1",
       "packageUri": "lib/",
-      "languageVersion": "3.2"
+      "languageVersion": "3.8"
+    },
+    {
+      "name": "yaml",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/yaml-3.1.3",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
     },
     {
       "name": "water_meter_sdk",
@@ -405,8 +531,8 @@
     }
   ],
   "generator": "pub",
-  "generatorVersion": "3.8.1",
-  "flutterRoot": "file:///Users/trantanduc/Desktop/flutterNewVerson/develope/flutter_3.32.1/flutter",
-  "flutterVersion": "3.32.1",
+  "generatorVersion": "3.10.7",
+  "flutterRoot": "file:///Users/trantanduc/Desktop/flutterNewVerson/develope/flutter3.38.6_arm64",
+  "flutterVersion": "3.38.6",
   "pubCache": "file:///Users/trantanduc/.pub-cache"
 }

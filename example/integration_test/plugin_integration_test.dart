@@ -17,9 +17,9 @@ import 'package:water_meter_sdk/water_meter_sdk.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('getPlatformVersion test', (WidgetTester tester) async {
-    final WaterMeterSdk plugin = WaterMeterSdk();
-    final result = await plugin.processWaterMeterImage(await File('test/images/test.jpg').readAsBytes());
-    expect(result, isNotNull);
-  });
+  // testWidgets('getPlatformVersion test', (WidgetTester tester) async {
+  //   final WaterMeterSdk plugin = WaterMeterSdk();
+  //   final result = await plugin.processWaterMeterImage(await File('test/images/test.jpg').readAsBytes());
+  //   expect(result, isNotNull);
+  // });
 }

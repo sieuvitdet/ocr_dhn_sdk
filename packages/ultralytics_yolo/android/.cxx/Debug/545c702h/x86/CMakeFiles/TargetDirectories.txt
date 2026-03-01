@@ -1,0 +1,3 @@
+/Users/trantanduc/.pub-cache/hosted/pub.dev/ultralytics_yolo-0.2.0/android/.cxx/Debug/545c702h/x86/CMakeFiles/ultralytics.dir
+/Users/trantanduc/.pub-cache/hosted/pub.dev/ultralytics_yolo-0.2.0/android/.cxx/Debug/545c702h/x86/CMakeFiles/edit_cache.dir
+/Users/trantanduc/.pub-cache/hosted/pub.dev/ultralytics_yolo-0.2.0/android/.cxx/Debug/545c702h/x86/CMakeFiles/rebuild_cache.dir

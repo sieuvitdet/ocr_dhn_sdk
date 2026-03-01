@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:async';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:water_meter_sdk/water_meter_sdk.dart';
+import 'package:water_meter_sdk/models/detection_test_result.dart';
+import 'package:water_meter_sdk/models/water_meter_result.dart';
 import 'package:water_meter_sdk/water_meter_sdk_ultralytics_yolo.dart';
+import 'package:water_meter_sdk/water_meter_sdk_yolo_old_version.dart';
+import 'detection_log_screen.dart';
+import 'water_meter_detector.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,41 +34,49 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final _waterMeterSdkPlugin = WaterMeterSdk();
   final _yoloService = WaterMeterSdkUltralyticsYolo();
+  final _yoloOldVersionService = WaterMeterSdkYoloOldVersion();
+  final _detector = WaterMeterDetector();
   final _imagePicker = ImagePicker();
   WaterMeterResult? _lastResult;
+  DetectResult? _lastDetectResult;
+  String _lastMethod = '';
   bool _isProcessing = false;
   File? _selectedImage;
   bool _hasPermissionPhoto = false;
   bool _hasPermissionCamera = false;
-   Uint8List? selectedImage;
+  Uint8List? selectedImage;
 
   @override
   void initState() {
     super.initState();
 
     _yoloService.init();
+    _yoloOldVersionService.init();
+    _detector.loadModel();
 
     _checkPhotoPermission();
     _checkCameraPermission();
   }
 
+  /// Android < 13 uses Permission.storage, Android 13+ and iOS use Permission.photos
+  Permission get _photoPermission =>
+      Platform.isAndroid ? Permission.storage : Permission.photos;
+
   Future<void> _checkPhotoPermission() async {
-    final status = await Permission.photos.status;
+    final status = await _photoPermission.status;
     setState(() {
-      _hasPermissionPhoto = status.isGranted;
+      _hasPermissionPhoto = status.isGranted || status.isLimited;
     });
   }
-  
 
   Future<void> _requestPhotoPermission() async {
-    final status = await Permission.photos.request();
-    
+    final status = await _photoPermission.request();
+
     setState(() {
-      _hasPermissionCamera = status.isGranted;
+      _hasPermissionPhoto = status.isGranted || status.isLimited;
     });
-    
+
     if (status.isPermanentlyDenied && mounted) {
       showDialog(
         context: context,
@@ -89,9 +99,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.pop(context);
                 await openAppSettings();
                 if (!mounted) return;
-                final newStatus = await Permission.photos.status;
+                final newStatus = await _photoPermission.status;
                 setState(() {
-                  _hasPermissionPhoto = newStatus.isGranted;
+                  _hasPermissionPhoto = newStatus.isGranted || newStatus.isLimited;
                 });
               },
               child: const Text('Open Settings'),
@@ -110,17 +120,40 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _requestCameraPermission() async {
-    print('requestCameraPermission');
     final status = await Permission.camera.request();
     setState(() {
       _hasPermissionCamera = status.isGranted;
     });
+
+    if (status.isPermanentlyDenied && mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) => AlertDialog(
+          title: const Text('Camera Permission Required'),
+          content: const Text('Please enable camera access in app settings.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                await openAppSettings();
+              },
+              child: const Text('Open Settings'),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   Future<void> _pickImageFromCamera() async {
     if (!_hasPermissionCamera) {
       await _requestCameraPermission();
-      return;
+      if (!_hasPermissionCamera) return;
     }
 
     try {
@@ -137,18 +170,21 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     } catch (e) {
-      debugPrint('Error picking image: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error picking image: $e')),
-      );
+      debugPrint('Error picking image from camera: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Camera error: $e')),
+        );
+      }
     }
-
   }
 
   Future<void> _pickImageFromGallery() async {
-    if (!_hasPermissionPhoto) {
+    // On Android, image_picker uses system intent - no manual permission needed.
+    // On iOS, request photo library permission first.
+    if (Platform.isIOS && !_hasPermissionPhoto) {
       await _requestPhotoPermission();
-      return;
+      if (!_hasPermissionPhoto) return;
     }
 
     try {
@@ -165,41 +201,162 @@ class _HomeScreenState extends State<HomeScreen> {
         });
       }
     } catch (e) {
-      debugPrint('Error picking image: $e');
-      ScaffoldMessenger.of(context).showSnackBar( 
-        SnackBar(content: Text('Error picking image: $e')),
-      );
+      debugPrint('Error picking image from gallery: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gallery error: $e')),
+        );
+      }
     }
   }
 
-  Future<void> _processImage() async {
-    if (_selectedImage == null || _isProcessing) {
-      return;
-    }
+  /// Test Scenario: detect + draw bbox + crop + OCR → navigate to log screen
+  Future<void> _processWithScenario(YoloScenario scenario) async {
+    if (_selectedImage == null || _isProcessing) return;
 
     setState(() {
       _isProcessing = true;
+      _lastResult = null;
+      _lastDetectResult = null;
+      _lastMethod = scenario == YoloScenario.pubCache
+          ? 'Scenario 1 (Pub Cache)'
+          : 'Scenario 2 (Local Fork)';
     });
 
     try {
-      WaterMeterResult? result;
-      result = await _yoloService.processWaterMeterImage(await _selectedImage!.readAsBytes(), isOnline: true);
-      
+      final bytes = await _selectedImage!.readAsBytes();
+      final result = await _yoloService.processWithScenario(
+        bytes,
+        scenario,
+        isOnline: true,
+      );
+
+      if (mounted) {
+        setState(() {
+          selectedImage = result.inputImageWithBBox;
+          _isProcessing = false;
+        });
+
+        // Navigate to log screen
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DetectionLogScreen(result: result),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error scenario: $e');
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _processWithYoloOldVersion() async {
+    if (_selectedImage == null || _isProcessing) return;
+
+    setState(() {
+      _isProcessing = true;
+      _lastResult = null;
+      _lastDetectResult = null;
+      _lastMethod = 'YOLO Old Version';
+    });
+
+    try {
+      final bytes = await _selectedImage!.readAsBytes();
+      final result = await _yoloOldVersionService.processWaterMeterImage(
+        bytes,
+        isOnline: true,
+      );
+
+      if (mounted) {
+        setState(() {
+          selectedImage = result?.imageBytes;
+          _isProcessing = false;
+        });
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DetectionLogScreen(result: DetectionTestResult(scenario: YoloScenario.oldVersion, timestamp: DateTime.now(), obbDetections: [], totalDetections: 0, ocrReading: '', ocrConfidence: 0, logs: [])),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error YOLO Old Version: $e');
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('YOLO Old Version Error: $e')),
+        );
+      }
+    }
+  }
+  /// SDK: yolo11n-obb + crop + OCR (original)
+  Future<void> _processWithSDK() async {
+    if (_selectedImage == null || _isProcessing) return;
+
+    setState(() {
+      _isProcessing = true;
+      _lastResult = null;
+      _lastDetectResult = null;
+    });
+
+    try {
+      final result = await _yoloService.processWaterMeterImage(
+        await _selectedImage!.readAsBytes(),
+        isOnline: true,
+      );
       if (mounted) {
         setState(() {
           selectedImage = result?.imageBytes;
           _lastResult = result;
+          _lastMethod = 'SDK (best model)';
           _isProcessing = false;
         });
       }
     } catch (e) {
-      debugPrint('Error processing image: $e');
+      debugPrint('Error SDK: $e');
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('SDK Error: $e')),
+        );
+      }
+    }
+  }
+
+  /// Detector: best_float32/best + OBB detection only
+  Future<void> _processWithDetector() async {
+    if (_selectedImage == null || _isProcessing) return;
+
+    setState(() {
+      _isProcessing = true;
+      _lastResult = null;
+      _lastDetectResult = null;
+    });
+
+    try {
+      final bytes = await _selectedImage!.readAsBytes();
+      final result = await _detector.detectFromBytes(bytes);
       if (mounted) {
         setState(() {
+          selectedImage = result.annotatedImage;
+          _lastDetectResult = result;
+          _lastMethod = 'OBB Detector (best)';
           _isProcessing = false;
         });
+      }
+    } catch (e) {
+      debugPrint('Error Detector: $e');
+      if (mounted) {
+        setState(() => _isProcessing = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error processing image: $e')),
+          SnackBar(content: Text('Detector Error: $e')),
         );
       }
     }
@@ -207,7 +364,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
-    _waterMeterSdkPlugin.dispose();
+    _yoloService.dispose();
+    _detector.dispose();
     super.dispose();
   }
 
@@ -221,7 +379,6 @@ class _HomeScreenState extends State<HomeScreen> {
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ListView(
-          // crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Image display area
             Container(
@@ -259,50 +416,37 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                     ),
-              
             ),
-            
+
             const SizedBox(height: 16),
 
             if (selectedImage != null)
-                Image.memory(selectedImage!,
+              Image.memory(
+                selectedImage!,
                 fit: BoxFit.contain,
-                height: MediaQuery.of(context).size.height*0.5,
-                width: MediaQuery.of(context).size.width,),
-            
-            // Buttons
+                height: MediaQuery.of(context).size.height * 0.5,
+                width: MediaQuery.of(context).size.width,
+              ),
+
+            // Pick image buttons
             Row(
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: _hasPermissionPhoto ? _pickImageFromGallery : _requestPhotoPermission,
+                    onPressed: _pickImageFromGallery,
                     icon: const Icon(Icons.photo_library),
-                    label: Text(_hasPermissionPhoto ? 'Chọn ảnh' : 'Grant Permission'),
+                    label: const Text('Gallery'),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                   ),
                 ),
                 const SizedBox(width: 12),
-
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: _hasPermissionCamera ? _pickImageFromCamera : _requestCameraPermission,
-                    icon: const Icon(Icons.camera),
-                    label: Text(_hasPermissionCamera ? 'Chụp ảnh' : 'Grant Permission'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    // onPressed: _selectedImage != null && !_isProcessing ? _processImage : null,
-                    onPressed: _processImage,
-                    icon: const Icon(Icons.analytics),
-                    label: Text(_isProcessing ? 'Processing...' : 'Analyze'),
+                    onPressed: _pickImageFromCamera,
+                    icon: const Icon(Icons.camera_alt),
+                    label: const Text('Camera'),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
@@ -310,16 +454,163 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 16),
-            
-            // Results
+
+            // === TEST SCENARIOS ===
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade400),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Test Scenarios',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Detect + BBox + Crop + OCR → Log Screen',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _isProcessing
+                              ? null
+                              : () => _processWithYoloOldVersion(),
+                          icon: const Icon(Icons.cloud_download, size: 18),
+                          label: Text(
+                            _isProcessing && _lastMethod.contains('YOLO Old Version')
+                                ? 'Processing...'
+                                : 'S0: YOLO Old Version',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _isProcessing
+                              ? null
+                              : () => _processWithScenario(YoloScenario.pubCache),
+                          icon: const Icon(Icons.cloud_download, size: 18),
+                          label: Text(
+                            _isProcessing && _lastMethod.contains('Pub Cache')
+                                ? 'Processing...'
+                                : 'S1: Pub Cache',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _isProcessing
+                              ? null
+                              : () => _processWithScenario(YoloScenario.localFork),
+                          icon: const Icon(Icons.folder_open, size: 18),
+                          label: Text(
+                            _isProcessing && _lastMethod.contains('Local Fork')
+                                ? 'Processing...'
+                                : 'S2: Local Fork',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            backgroundColor: Colors.orange,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Original detect buttons: SDK vs OBB Detector
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _isProcessing ? null : _processWithSDK,
+                    icon: const Icon(Icons.analytics),
+                    label: Text(_isProcessing && _lastMethod.contains('SDK')
+                        ? 'Processing...'
+                        : 'SDK (best)'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      backgroundColor: Colors.teal,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _isProcessing ? null : _processWithDetector,
+                    icon: const Icon(Icons.crop_free),
+                    label: Text(_isProcessing && _lastMethod.contains('Detector')
+                        ? 'Processing...'
+                        : 'OBB (best)'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      backgroundColor: Colors.deepPurple,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // Processing indicator
+            if (_isProcessing)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+
+            // Method label
+            if (_lastMethod.isNotEmpty && !_isProcessing)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'Method: $_lastMethod',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+              ),
+
+            // SDK Results
             if (_lastResult != null)
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.green.shade50,
-                  border: Border.all(color: Colors.green.shade200),
+                  color: Colors.blue.shade50,
+                  border: Border.all(color: Colors.blue.shade200),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Column(
@@ -330,57 +621,93 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.green.shade800,
+                        color: Colors.blue.shade800,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      _lastResult!.reading.isNotEmpty 
-                          ? _lastResult!.reading 
+                      _lastResult!.reading.isNotEmpty
+                          ? _lastResult!.reading
                           : 'No reading detected',
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: Colors.green.shade900,
+                        color: Colors.blue.shade900,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Confidence: ${(_lastResult!.confidence * 100).toStringAsFixed(1)}%',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.green.shade700,
-                      ),
+                      style: TextStyle(fontSize: 14, color: Colors.blue.shade700),
                     ),
                     if (_lastResult!.debugInfo != null && _lastResult!.debugInfo!.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
                         child: Text(
                           'Debug: ${_lastResult!.debugInfo!.join(", ")}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                          ),
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                         ),
                       ),
+                    if (_lastResult!.rawOcrText != null && _lastResult!.rawOcrText!.isNotEmpty)
+                      Text(
+                        'Raw OCR Text: ${_lastResult!.rawOcrText}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      ),
+                    if (_lastResult!.processedText != null && _lastResult!.processedText!.isNotEmpty)
+                      Text(
+                        'Processed Text: ${_lastResult!.processedText}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      ),
+                  ],
+                ),
+              ),
 
-                      if(_lastResult!.rawOcrText != null && _lastResult!.rawOcrText!.isNotEmpty)
-                        Text(
-                          'Raw OCR Text: ${_lastResult!.rawOcrText}',
+            // OBB Detector Results
+            if (_lastDetectResult != null)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  border: Border.all(color: Colors.orange.shade200),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'OBB Detections: ${_lastDetectResult!.detections.length}',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange.shade800,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Image: ${_lastDetectResult!.nativeImageWidth}x${_lastDetectResult!.nativeImageHeight}',
+                      style: TextStyle(fontSize: 14, color: Colors.orange.shade700),
+                    ),
+                    Text(
+                      'Threshold: conf=${_lastDetectResult!.confidenceThreshold} iou=${_lastDetectResult!.iouThreshold}',
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    ),
+                    const SizedBox(height: 8),
+                    ..._lastDetectResult!.detections.asMap().entries.map((entry) {
+                      final i = entry.key;
+                      final d = entry.value;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          '[$i] ${d.className} ${(d.confidence * 100).toStringAsFixed(1)}% '
+                          'angle=${d.angleDeg.toStringAsFixed(1)}',
                           style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
+                            fontSize: 13,
+                            fontFamily: 'monospace',
+                            color: d.confidence > 0.5 ? Colors.green.shade700 : Colors.red.shade700,
                           ),
                         ),
-
-                      if(_lastResult!.processedText != null && _lastResult!.processedText!.isNotEmpty)
-                        Text(
-                          'Processed Text: ${_lastResult!.processedText}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
+                      );
+                    }),
                   ],
                 ),
               ),
@@ -409,7 +736,6 @@ class PermissionHandler {
           permission = PermissionDeviceType.permissionMicrophone;
         }
         if(showPopup) {
-          /// Xử lý show popup warning xin quyền với button từ chối và cấp quyền, khi chọn cấp quyền chạy openSetting
           PermissionRequest.openSetting();
         }
       });
@@ -420,15 +746,10 @@ class PermissionHandler {
 }
 
 class PermissionDeviceType {
-  /// CAMERA
   static const String permissionCamera = 'camera';
-  /// LOCATION
   static const String permissionLocation = 'location';
-  /// STORAGE
   static const String permissionStorage = 'storage';
-  /// MICROPHONE
   static const String permissionMicrophone = 'microphone';
-  /// NOTIFICATION
   static const String permissionNotification = 'notification';
 }
 

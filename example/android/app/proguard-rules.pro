@@ -23,4 +23,7 @@
 # General Android rules
 -keepattributes *Annotation*
 -keepattributes SourceFile,LineNumberTable
--keep public class * extends java.lang.Exception 
+-keep public class * extends java.lang.Exception
+
+# ONNX Runtime
+-keep class ai.onnxruntime.** { *; } 

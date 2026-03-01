@@ -1,0 +1,1 @@
+/Volumes/DucsM1/ocr_dhn_sdk_flutter/ocr_dhn_sdk/example/build/ultralytics_yolo/intermediates/cxx/Debug/545c702h/obj/arm64-v8a

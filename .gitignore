@@ -1,0 +1,16 @@
+example/android/app/src/main/assets/yolo11n-obb.tflite
+example/assets/models/water_model_detect.tflite
+.claude
+.dart_tool
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache
+.pub
+.idea
+.vscode
+.DS_Store
+.env
+.env.local
+.env.development.local
+.env.test.local
+.dart_tool

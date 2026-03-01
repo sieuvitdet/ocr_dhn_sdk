@@ -1,0 +1,7 @@
+[
+{
+  "directory": "/Users/trantanduc/.pub-cache/hosted/pub.dev/ultralytics_yolo-0.2.0/android/.cxx/Debug/545c702h/arm64-v8a",
+  "command": "/Users/trantanduc/Library/Android/sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ --target=aarch64-none-linux-android21 --sysroot=/Users/trantanduc/Library/Android/sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -Dultralytics_EXPORTS -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security -frtti -fexceptions -std=c++17 -fexceptions -frtti -fno-limit-debug-info  -fPIC -fexceptions -frtti -std=c++17 -o CMakeFiles/ultralytics.dir/native-lib.cpp.o -c /Users/trantanduc/.pub-cache/hosted/pub.dev/ultralytics_yolo-0.2.0/android/src/main/cpp/native-lib.cpp",
+  "file": "/Users/trantanduc/.pub-cache/hosted/pub.dev/ultralytics_yolo-0.2.0/android/src/main/cpp/native-lib.cpp"
+}
+]
