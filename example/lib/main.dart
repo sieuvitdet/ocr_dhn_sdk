@@ -51,9 +51,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
 
-    _yoloService.init();
+    // _yoloService.init();
     _yoloOldVersionService.init();
-    _detector.loadModel();
+    // _detector.loadModel();
 
     _checkPhotoPermission();
     _checkCameraPermission();
@@ -279,12 +279,12 @@ class _HomeScreenState extends State<HomeScreen> {
           _isProcessing = false;
         });
 
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => DetectionLogScreen(result: DetectionTestResult(scenario: YoloScenario.oldVersion, timestamp: DateTime.now(), obbDetections: [], totalDetections: 0, ocrReading: '', ocrConfidence: 0, logs: [])),
-          ),
-        );
+        // Navigator.push(
+        //   context,
+        //   MaterialPageRoute(
+        //     builder: (_) => DetectionLogScreen(result: result),
+        //   ),
+        // );
       }
     } catch (e) {
       debugPrint('Error YOLO Old Version: $e');
