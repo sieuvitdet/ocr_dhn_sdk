@@ -16,12 +16,11 @@ dependencies:
   camera: ^0.10.5+9
   path_provider: ^2.1.2
   permission_handler: ^11.3.0
-  tflite_flutter: ^0.11.0
   http: ^1.4.0
   vector_math: ^2.1.4
   path: ^1.9.0
   fluttertoast: ^8.2.5
-  ultralytics_yolo: ^0.1.35
+  ultralytics_yolo: ^0.2.0
   
 
 dev_dependencies:

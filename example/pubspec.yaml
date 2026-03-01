@@ -64,7 +64,6 @@ flutter:
     - assets/ocr_model.onnx
     - assets/test_images/
     - assets/models/
-    - assets/models/water_model_detect.tflite
     - assets/test_images/sample.jpg
     - assets/test_images/sample1.png
     - assets/test_images/sample1.png
