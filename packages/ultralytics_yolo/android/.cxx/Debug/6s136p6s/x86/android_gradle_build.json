@@ -1,0 +1,38 @@
+{
+  "buildFiles": [
+    "/Volumes/DucsM1/ocr_dhn_sdk_flutter/ocr_dhn_sdk/packages/ultralytics_yolo/android/src/main/cpp/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/Users/trantanduc/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/Volumes/DucsM1/ocr_dhn_sdk_flutter/ocr_dhn_sdk/packages/ultralytics_yolo/android/.cxx/Debug/6s136p6s/x86",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/Users/trantanduc/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/Volumes/DucsM1/ocr_dhn_sdk_flutter/ocr_dhn_sdk/packages/ultralytics_yolo/android/.cxx/Debug/6s136p6s/x86",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "ultralytics::@6890427a1f51a3e7e1df": {
+      "toolchain": "toolchain",
+      "abi": "x86",
+      "artifactName": "ultralytics",
+      "output": "/Volumes/DucsM1/ocr_dhn_sdk_flutter/ocr_dhn_sdk/example/build/ultralytics_yolo/intermediates/cxx/Debug/6s136p6s/obj/x86/libultralytics.so",
+      "runtimeFiles": []
+    }
+  },
+  "toolchains": {
+    "toolchain": {
+      "cCompilerExecutable": "/Users/trantanduc/Library/Android/sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang.lld",
+      "cppCompilerExecutable": "/Users/trantanduc/Library/Android/sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++.lld"
+    }
+  },
+  "cFileExtensions": [],
+  "cppFileExtensions": [
+    "cpp"
+  ]
+}

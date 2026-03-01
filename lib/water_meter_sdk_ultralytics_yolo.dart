@@ -35,9 +35,7 @@ class WaterMeterSdkUltralyticsYolo {
 
   /// Original processWaterMeterImage (backward compatible)
   Future<WaterMeterResult?> processWaterMeterImage(Uint8List imageBytes, {bool isOnline = false}) async {
-    Uint8List croppedBytesAfter = Platform.isAndroid
-        ? await runOBBDetectionAndCropAndroid(imageBytes)
-        : await runOBBDetectionAndCropIOS(imageBytes);
+    final croppedBytesAfter = await runOBBDetectionAndCrop(imageBytes);
     if (isOnline) {
       final tempFile = await saveBytesToTempFile(croppedBytesAfter, 'cropped.jpg');
       final ocrApi = GetNumberOCR();
@@ -370,15 +368,9 @@ class WaterMeterSdkUltralyticsYolo {
     return file;
   }
 
-  Future<Uint8List> runOBBDetectionAndCropIOS(Uint8List imageBytes) async {
-    Uint8List imageBytesAfter;
-
-    final originalImageBytes = imageBytes;
-
-    final originalImage = img.decodeImage(originalImageBytes);
-    if (originalImage == null) {
-      return imageBytes;
-    }
+  Future<Uint8List> runOBBDetectionAndCrop(Uint8List imageBytes) async {
+    final originalImage = img.decodeImage(imageBytes);
+    if (originalImage == null) return imageBytes;
 
     final resizedImage = img.copyResize(originalImage, width: 416, height: 416);
     final resizedImageBytes = Uint8List.fromList(img.encodePng(resizedImage));
@@ -390,125 +382,52 @@ class WaterMeterSdkUltralyticsYolo {
       for (final detection in obbList) {
         final boxes = detection as Map<dynamic, dynamic>;
         final points = boxes['points'] as List<dynamic>? ?? [];
-        if (points.isNotEmpty) {
-          print('  --- $boxes');
 
-          if (points.isNotEmpty && points.length == 4 && (boxes['confidence'] as num).toDouble() > 0.2 && (boxes['confidence'] as num).toDouble() < 1) {
-            imageBytesAfter = cropImageFromOBB(resizedImageBytes, points);
-            return imageBytesAfter;
-          }
+        if (points.isNotEmpty && points.length == 4
+            && (boxes['confidence'] as num).toDouble() > 0.2
+            && (boxes['confidence'] as num).toDouble() < 1) {
+          return cropImageFromOBB(resizedImageBytes, points);
         }
       }
     }
     return imageBytes;
   }
 
-  Future<Uint8List> runOBBDetectionAndCropAndroid(Uint8List imageBytes) async {
-    final originalImage = img.decodeImage(imageBytes);
-    if (originalImage == null) return imageBytes;
-
-    final resizedImage = img.copyResize(originalImage, width: 416, height: 416);
-    final resizedImageBytes = Uint8List.fromList(img.encodePng(resizedImage));
-
-    final results = await yolo.predict(resizedImageBytes);
-    final obbList = results['obb'] as List<dynamic>;
-    if (obbList.isEmpty) return imageBytes;
-
-    final validDetections = <Map<String, dynamic>>[];
-    for (final detection in obbList) {
-      final boxes = detection as Map<dynamic, dynamic>;
-      final points = boxes['points'] as List<dynamic>? ?? [];
-      final confidence = (boxes['confidence'] as num).toDouble();
-
-      if (points.length != 4) continue;
-      if (confidence <= 0.2 || confidence >= 1.0) continue;
-
-      final isNormalized = points.every((p) {
-        final m = p as Map;
-        final x = (m['x'] as num).toDouble();
-        final y = (m['y'] as num).toDouble();
-        return x >= 0 && x <= 1.0 && y >= 0 && y <= 1.0;
-      });
-
-      if (isNormalized) {
-        validDetections.add({'points': points, 'confidence': confidence});
-      }
-    }
-
-    if (validDetections.isEmpty) return imageBytes;
-
-    validDetections.sort((a, b) => (b['confidence'] as double).compareTo(a['confidence'] as double));
-    final bestDetection = validDetections.first;
-    final points = bestDetection['points'] as List<dynamic>;
-
-    return cropImageFromOBB(resizedImageBytes, points);
-  }
-
   Uint8List cropImageFromOBB(Uint8List imageBytes, List<dynamic> points) {
     final image = img.decodeImage(imageBytes);
     if (image == null) throw Exception('Failed to decode image for cropping');
 
-    // Convert normalized points to pixel coordinates
-    final pixelPoints = points.map((p) {
-      final pointMap = p as Map<dynamic, dynamic>;
-      return {
-        'x': (pointMap['x'] as num).toDouble() * image.width,
-        'y': (pointMap['y'] as num).toDouble() * image.height,
-      };
-    }).toList();
+    double minX = double.infinity;
+    double maxX = double.negativeInfinity;
+    double minY = double.infinity;
+    double maxY = double.negativeInfinity;
 
-    // Calculate center and dimensions of OBB
-    final p0 = pixelPoints[0];
-    final p1 = pixelPoints[1];
-    final p3 = pixelPoints[3];
+    for (final point in points) {
+      final pointMap = point as Map<dynamic, dynamic>;
+      final x = (pointMap['x'] as num).toDouble() * image.width;
+      final y = (pointMap['y'] as num).toDouble() * image.height;
 
-    // Calculate rotation angle from first edge (p0 -> p1)
-    final dx = p1['x']! - p0['x']!;
-    final dy = p1['y']! - p0['y']!;
-    final angle = math.atan2(dy, dx) * 180 / math.pi;
+      minX = math.min(minX, x);
+      maxX = math.max(maxX, x);
+      minY = math.min(minY, y);
+      maxY = math.max(maxY, y);
+    }
 
-    // Calculate OBB width and height
-    final width = math.sqrt(dx * dx + dy * dy);
-    final dx2 = p3['x']! - p0['x']!;
-    final dy2 = p3['y']! - p0['y']!;
-    final height = math.sqrt(dx2 * dx2 + dy2 * dy2);
+    final padding = Platform.isIOS ? 15 : 0;
+    minX = math.max(0, minX - padding);
+    minY = math.max(0, minY - padding);
+    maxX = math.min(image.width.toDouble(), maxX + padding);
+    maxY = math.min(image.height.toDouble(), maxY + padding);
 
-    // Calculate center point of OBB
-    final centerX = pixelPoints.map((p) => p['x']!).reduce((a, b) => a + b) / 4;
-    final centerY = pixelPoints.map((p) => p['y']!).reduce((a, b) => a + b) / 4;
-
-    // Rotate image to align OBB horizontally
-    final rotated = img.copyRotate(image, angle: -angle);
-
-    // After rotation, the center point also rotates around image center
-    final imageCenterX = image.width / 2;
-    final imageCenterY = image.height / 2;
-
-    final angleRad = -angle * math.pi / 180;
-    final cosA = math.cos(angleRad);
-    final sinA = math.sin(angleRad);
-
-    final translatedX = centerX - imageCenterX;
-    final translatedY = centerY - imageCenterY;
-
-    final rotatedCenterX = translatedX * cosA - translatedY * sinA + imageCenterX;
-    final rotatedCenterY = translatedX * sinA + translatedY * cosA + imageCenterY;
-
-    // Crop aligned region from rotated image
-    final cropX = (rotatedCenterX - width / 2).clamp(0, rotated.width.toDouble());
-    final cropY = (rotatedCenterY - height / 2).clamp(0, rotated.height.toDouble());
-    final cropWidth = width.clamp(1, rotated.width - cropX);
-    final cropHeight = height.clamp(1, rotated.height - cropY);
-
-    final cropped = img.copyCrop(
-      rotated,
-      x: cropX.round(),
-      y: cropY.round(),
-      width: cropWidth.round(),
-      height: cropHeight.round(),
+    final croppedImage = img.copyCrop(
+      image,
+      x: minX.round(),
+      y: minY.round(),
+      width: (maxX - minX).round(),
+      height: (maxY - minY).round(),
     );
 
-    return Uint8List.fromList(img.encodePng(cropped));
+    return Uint8List.fromList(img.encodePng(croppedImage));
   }
 
   Future<void> dispose() async {

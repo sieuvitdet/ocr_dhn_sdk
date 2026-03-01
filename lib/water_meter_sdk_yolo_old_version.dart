@@ -19,9 +19,9 @@ class WaterMeterSdkYoloOldVersion {
 
   String get modelPath {
     if (Platform.isAndroid) {
-      return 'best_float32'; // android/app/src/main/assets/best_float32.tflite
+      return 'yolo11n-obb';
     } else {
-      return 'best'; // ios/Runner/best.mlpackage
+      return 'yolo11n-obb';
     }
   }
 
