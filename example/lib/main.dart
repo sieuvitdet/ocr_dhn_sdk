@@ -257,41 +257,33 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _processWithYoloOldVersion() async {
-    if (_selectedImage == null || _isProcessing) return;
+    if (_selectedImage == null || _isProcessing) {
+      return;
+    }
 
     setState(() {
       _isProcessing = true;
-      _lastResult = null;
-      _lastDetectResult = null;
-      _lastMethod = 'YOLO Old Version';
     });
 
     try {
-      final bytes = await _selectedImage!.readAsBytes();
-      final result = await _yoloOldVersionService.processWaterMeterImage(
-        bytes,
-        isOnline: true,
-      );
-
+      WaterMeterResult? result;
+      result = await _yoloOldVersionService.processWaterMeterImage(await _selectedImage!.readAsBytes(), isOnline: true);
+      
       if (mounted) {
         setState(() {
           selectedImage = result?.imageBytes;
+          _lastResult = result;
           _isProcessing = false;
         });
-
-        // Navigator.push(
-        //   context,
-        //   MaterialPageRoute(
-        //     builder: (_) => DetectionLogScreen(result: result),
-        //   ),
-        // );
       }
     } catch (e) {
-      debugPrint('Error YOLO Old Version: $e');
+      debugPrint('Error processing image: $e');
       if (mounted) {
-        setState(() => _isProcessing = false);
+        setState(() {
+          _isProcessing = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('YOLO Old Version Error: $e')),
+          SnackBar(content: Text('Error processing image: $e')),
         );
       }
     }
