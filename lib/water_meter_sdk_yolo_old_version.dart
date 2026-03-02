@@ -1,11 +1,9 @@
 import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
-import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 import 'dart:typed_data';
 import 'dart:math' as math;
-import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
+// import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 import 'package:image/image.dart' as img;
 import 'package:ultralytics_yolo/yolo.dart';
 import 'package:water_meter_sdk/api/get_number_ocr.dart';

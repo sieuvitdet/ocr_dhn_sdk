@@ -18,12 +18,14 @@ class DetectionLogScreen extends StatelessWidget {
             YoloScenario.pubCache => 'Log: S1 (Pub Cache)',
             YoloScenario.localFork => 'Log: S2 (Local Fork)',
             YoloScenario.oldVersion => 'Log: S0 (YOLO Old Version)',
+            YoloScenario.nativeObb => 'Log: S3 (Native OBB)',
           },
         ),
         backgroundColor: switch (result.scenario) {
           YoloScenario.pubCache => Colors.blue,
           YoloScenario.localFork => Colors.orange,
           YoloScenario.oldVersion => Colors.teal,
+          YoloScenario.nativeObb => Colors.green,
         },
         foregroundColor: Colors.white,
         actions: [
@@ -56,6 +58,7 @@ class DetectionLogScreen extends StatelessWidget {
                     YoloScenario.pubCache => '1 - Pub Cache (default ultralytics_yolo)',
                     YoloScenario.localFork => '2 - Local Fork (/packages)',
                     YoloScenario.oldVersion => '0 - YOLO Old Version (yolo11n-obb)',
+                    YoloScenario.nativeObb => '3 - Native OBB (TFLite method channel)',
                   }),
                 _infoRow('Time', result.timestamp.toString()),
                 _infoRow('Input', '${result.inputWidth}x${result.inputHeight}'),

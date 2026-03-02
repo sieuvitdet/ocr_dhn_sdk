@@ -1,0 +1,22 @@
+R_DEF: Internal format may change without notice
+local
+drawable ic_launcher_background
+drawable ic_launcher_foreground
+id btnDetect
+id detectionResults
+id imageContainer
+id imageListLabel
+id imageRecyclerView
+id imageView
+id overlayView
+id resultsText
+id statusText
+id thumbImageView
+id thumbLabel
+layout activity_main
+layout item_test_image
+mipmap ic_launcher
+string app_name
+string tv_no_detections
+style Theme.WaterClockDetection
+xml file_paths

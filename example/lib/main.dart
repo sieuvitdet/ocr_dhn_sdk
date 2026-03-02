@@ -6,7 +6,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:water_meter_sdk/models/detection_test_result.dart';
 import 'package:water_meter_sdk/models/water_meter_result.dart';
 import 'package:water_meter_sdk/water_meter_sdk_ultralytics_yolo.dart';
-import 'package:water_meter_sdk/water_meter_sdk_yolo_old_version.dart';
 import 'detection_log_screen.dart';
 import 'water_meter_detector.dart';
 
@@ -35,8 +34,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _yoloService = WaterMeterSdkUltralyticsYolo();
-  final _yoloOldVersionService = WaterMeterSdkYoloOldVersion();
-  final _detector = WaterMeterDetector();
+  // final _detector = WaterMeterDetector();
   final _imagePicker = ImagePicker();
   WaterMeterResult? _lastResult;
   DetectResult? _lastDetectResult;
@@ -51,8 +49,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
 
-    // _yoloService.init();
-    _yoloOldVersionService.init();
+    _yoloService.init();
+    // _yoloOldVersionService.init();
     // _detector.loadModel();
 
     _checkPhotoPermission();
@@ -256,37 +254,79 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _processWithYoloOldVersion() async {
-    if (_selectedImage == null || _isProcessing) {
-      return;
-    }
+  /// Test Scenario: Native OBB via TFLite method channel
+  Future<void> _processWithNativeObb() async {
+    if (_selectedImage == null || _isProcessing) return;
 
     setState(() {
       _isProcessing = true;
+      _lastResult = null;
+      _lastDetectResult = null;
+      _lastMethod = 'Scenario 3 (Native OBB)';
     });
 
     try {
-      WaterMeterResult? result;
-      result = await _yoloOldVersionService.processWaterMeterImage(await _selectedImage!.readAsBytes(), isOnline: true);
-      
+      final bytes = await _selectedImage!.readAsBytes();
+      final result = await _yoloService.processWithNativeObb(
+        bytes,
+        isOnline: true,
+      );
+
       if (mounted) {
         setState(() {
-          selectedImage = result?.imageBytes;
-          _lastResult = result;
+          selectedImage = result.inputImageWithBBox;
           _isProcessing = false;
         });
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DetectionLogScreen(result: result),
+          ),
+        );
       }
     } catch (e) {
-      debugPrint('Error processing image: $e');
+      debugPrint('Error native OBB: $e');
       if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
+        setState(() => _isProcessing = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error processing image: $e')),
+          SnackBar(content: Text('Native OBB Error: $e')),
         );
       }
     }
+  }
+
+  Future<void> _processWithYoloOldVersion() async {
+    // if (_selectedImage == null || _isProcessing) {
+    //   return;
+    // }
+
+    // setState(() {
+    //   _isProcessing = true;
+    // });
+
+    // try {
+    //   WaterMeterResult? result;
+    //   result = await _yoloOldVersionService.processWaterMeterImage(await _selectedImage!.readAsBytes(), isOnline: true);
+      
+    //   if (mounted) {
+    //     setState(() {
+    //       selectedImage = result?.imageBytes;
+    //       _lastResult = result;
+    //       _isProcessing = false;
+    //     });
+    //   }
+    // } catch (e) {
+    //   debugPrint('Error processing image: $e');
+    //   if (mounted) {
+    //     setState(() {
+    //       _isProcessing = false;
+    //     });
+    //     ScaffoldMessenger.of(context).showSnackBar(
+    //       SnackBar(content: Text('Error processing image: $e')),
+    //     );
+    //   }
+    // }
   }
   /// SDK: yolo11n-obb + crop + OCR (original)
   Future<void> _processWithSDK() async {
@@ -323,41 +363,41 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Detector: best_float32/best + OBB detection only
-  Future<void> _processWithDetector() async {
-    if (_selectedImage == null || _isProcessing) return;
+  // Future<void> _processWithDetector() async {
+  //   if (_selectedImage == null || _isProcessing) return;
 
-    setState(() {
-      _isProcessing = true;
-      _lastResult = null;
-      _lastDetectResult = null;
-    });
+  //   setState(() {
+  //     _isProcessing = true;
+  //     _lastResult = null;
+  //     _lastDetectResult = null;
+  //   });
 
-    try {
-      final bytes = await _selectedImage!.readAsBytes();
-      final result = await _detector.detectFromBytes(bytes);
-      if (mounted) {
-        setState(() {
-          selectedImage = result.annotatedImage;
-          _lastDetectResult = result;
-          _lastMethod = 'OBB Detector (best)';
-          _isProcessing = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error Detector: $e');
-      if (mounted) {
-        setState(() => _isProcessing = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Detector Error: $e')),
-        );
-      }
-    }
-  }
+  //   try {
+  //     final bytes = await _selectedImage!.readAsBytes();
+  //     final result = await _detector.detectFromBytes(bytes);
+  //     if (mounted) {
+  //       setState(() {
+  //         selectedImage = result.annotatedImage;
+  //         _lastDetectResult = result;
+  //         _lastMethod = 'OBB Detector (best)';
+  //         _isProcessing = false;
+  //       });
+  //     }
+  //   } catch (e) {
+  //     debugPrint('Error Detector: $e');
+  //     if (mounted) {
+  //       setState(() => _isProcessing = false);
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(content: Text('Detector Error: $e')),
+  //       );
+  //     }
+  //   }
+  // }
 
   @override
   void dispose() {
     _yoloService.dispose();
-    _detector.dispose();
+    // _detector.dispose();
     super.dispose();
   }
 
@@ -512,27 +552,28 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: _isProcessing
-                              ? null
-                              : () => _processWithScenario(YoloScenario.localFork),
-                          icon: const Icon(Icons.folder_open, size: 18),
-                          label: Text(
-                            _isProcessing && _lastMethod.contains('Local Fork')
-                                ? 'Processing...'
-                                : 'S2: Local Fork',
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            backgroundColor: Colors.orange,
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                      ),
                     ],
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _isProcessing
+                          ? null
+                          : () => _processWithNativeObb(),
+                      icon: const Icon(Icons.memory, size: 18),
+                      label: Text(
+                        _isProcessing && _lastMethod.contains('Native OBB')
+                            ? 'Processing...'
+                            : 'S3: Native OBB (TFLite)',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -558,20 +599,20 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _isProcessing ? null : _processWithDetector,
-                    icon: const Icon(Icons.crop_free),
-                    label: Text(_isProcessing && _lastMethod.contains('Detector')
-                        ? 'Processing...'
-                        : 'OBB (best)'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      backgroundColor: Colors.deepPurple,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ),
+                // Expanded(
+                //   child: ElevatedButton.icon(
+                //     onPressed: _isProcessing ? null : _processWithDetector,
+                //     icon: const Icon(Icons.crop_free),
+                //     label: Text(_isProcessing && _lastMethod.contains('Detector')
+                //         ? 'Processing...'
+                //         : 'OBB (best)'),
+                //     style: ElevatedButton.styleFrom(
+                //       padding: const EdgeInsets.symmetric(vertical: 12),
+                //       backgroundColor: Colors.deepPurple,
+                //       foregroundColor: Colors.white,
+                //     ),
+                //   ),
+                // ),
               ],
             ),
 

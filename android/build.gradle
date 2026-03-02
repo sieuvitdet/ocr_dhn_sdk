@@ -47,11 +47,8 @@ android {
         minSdk = 21
     }
 
-    dependencies {
-        testImplementation("org.jetbrains.kotlin:kotlin-test")
-        testImplementation("org.mockito:mockito-core:5.0.0")
-        implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-        implementation 'com.google.mlkit:text-recognition:16.0.0'
+    aaptOptions {
+        noCompress "tflite"
     }
 
     testOptions {
@@ -65,4 +62,12 @@ android {
             }
         }
     }
+}
+
+dependencies {
+    testImplementation("org.jetbrains.kotlin:kotlin-test")
+    testImplementation("org.mockito:mockito-core:5.0.0")
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation 'com.google.mlkit:text-recognition:16.0.0'
+    implementation 'com.google.ai.edge.litert:litert:1.4.0'
 }

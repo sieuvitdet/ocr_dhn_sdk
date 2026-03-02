@@ -12,6 +12,9 @@ enum YoloScenario {
 
   /// Scenario 0: YOLO Old Version (yolo11n-obb model)
   oldVersion,
+
+  /// Scenario 3: Native OBB via TFLite method channel (android_2 pipeline)
+  nativeObb,
 }
 
 /// Rich result from detection test including all debug data
@@ -69,6 +72,7 @@ class DetectionTestResult {
       YoloScenario.pubCache => '1 - Pub Cache (default)',
       YoloScenario.localFork => '2 - Local Fork (/packages)',
       YoloScenario.oldVersion => '0 - YOLO Old Version (yolo11n-obb)',
+      YoloScenario.nativeObb => '3 - Native OBB (TFLite method channel)',
     };
     buf.writeln('Scenario: $scenarioLabel');
     buf.writeln('');

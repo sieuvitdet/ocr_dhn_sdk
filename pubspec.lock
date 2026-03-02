@@ -632,7 +632,7 @@ packages:
   ultralytics_yolo:
     dependency: "direct main"
     description:
-      path: "packages/ultralytics_yolo"
+      path: "lib/packages/ultralytics_yolo"
       relative: true
     source: path
     version: "0.2.0"

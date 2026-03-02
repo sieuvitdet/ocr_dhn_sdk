@@ -20,17 +20,14 @@ dependencies:
   vector_math: ^2.1.4
   path: ^1.9.0
   fluttertoast: ^8.2.5
-  ultralytics_yolo: ^0.2.0
+  ultralytics_yolo:
+    path: lib/packages/ultralytics_yolo
   image_picker: ^1.0.7
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
-
-dependency_overrides:
-  ultralytics_yolo:
-    path: packages/ultralytics_yolo
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

@@ -1,3 +1,0 @@
-/Volumes/DucsM1/ocr_dhn_sdk_flutter/ocr_dhn_sdk/packages/ultralytics_yolo/android/.cxx/Debug/6s136p6s/armeabi-v7a/CMakeFiles/ultralytics.dir
-/Volumes/DucsM1/ocr_dhn_sdk_flutter/ocr_dhn_sdk/packages/ultralytics_yolo/android/.cxx/Debug/6s136p6s/armeabi-v7a/CMakeFiles/edit_cache.dir
-/Volumes/DucsM1/ocr_dhn_sdk_flutter/ocr_dhn_sdk/packages/ultralytics_yolo/android/.cxx/Debug/6s136p6s/armeabi-v7a/CMakeFiles/rebuild_cache.dir

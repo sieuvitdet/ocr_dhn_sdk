@@ -33,7 +33,6 @@ dependencies:
   path_provider: ^2.1.2
   permission_handler: ^11.3.0
   image: ^4.1.7
-  ultralytics_yolo: ^0.2.0
 
 
 dev_dependencies:
@@ -49,9 +48,9 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
 
-dependency_overrides:
-  ultralytics_yolo:
-    path: ../packages/ultralytics_yolo
+# dependency_overrides:
+#   ultralytics_yolo:
+#     path: ../packages/ultralytics_yolo
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

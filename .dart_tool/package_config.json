@@ -483,9 +483,9 @@
     },
     {
       "name": "ultralytics_yolo",
-      "rootUri": "../packages/ultralytics_yolo",
+      "rootUri": "../lib/packages/ultralytics_yolo",
       "packageUri": "lib/",
-      "languageVersion": "3.8"
+      "languageVersion": "3.6"
     },
     {
       "name": "vector_math",
