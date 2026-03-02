@@ -14,7 +14,11 @@ import 'package:water_meter_sdk/services/water_meter_ocr_service.dart';
 class WaterMeterSdkUltralyticsYolo {
   static const _methodChannel = MethodChannel('water_meter_sdk');
   final WaterMeterOCRService _ocrService = WaterMeterOCRService();
-  late YOLO yolo;
+  YOLO? _yolo;
+  bool _isInitialized = false;
+  Future<void>? _initFuture;
+
+  bool get isInitialized => _isInitialized;
 
   /// Model path based on platform
   String get modelPath {
@@ -25,15 +29,58 @@ class WaterMeterSdkUltralyticsYolo {
     }
   }
 
-  Future init() async {
-    yolo = YOLO(
+  Future<void> init() async {
+    if (_isInitialized) return;
+    if (_initFuture != null) {
+      await _initFuture;
+      return;
+    }
+    _initFuture = _doInit();
+    await _initFuture;
+  }
+
+  Future<void> _doInit() async {
+    if (Platform.isAndroid) {
+      // Android uses native TFLite detection via method channel - no YOLO needed
+      _isInitialized = true;
+      return;
+    }
+    // iOS: initialize YOLO for Dart-side OBB detection
+    _yolo = YOLO(
       modelPath: modelPath,
       task: YOLOTask.obb,
     );
-    await yolo.loadModel();
+    await _yolo!.loadModel();
+    _isInitialized = true;
   }
 
-  /// Original processWaterMeterImage (backward compatible)
+  /// Unified entry point: auto-routes Android → native TFLite, iOS → Dart YOLO
+  Future<WaterMeterResult> processImage(Uint8List imageBytes, {bool isOnline = false}) async {
+    if (!_isInitialized) {
+      throw StateError('SDK not initialized. Call init() first.');
+    }
+
+    if (Platform.isAndroid) {
+      final result = await processWithNativeObb(imageBytes, isOnline: isOnline);
+      return _toWaterMeterResult(result);
+    } else {
+      final result = await processWaterMeterImage(imageBytes, isOnline: isOnline);
+      return result ?? WaterMeterResult.empty();
+    }
+  }
+
+  WaterMeterResult _toWaterMeterResult(DetectionTestResult result) {
+    return WaterMeterResult(
+      reading: result.ocrReading,
+      confidence: result.ocrConfidence,
+      imageBytes: result.croppedImage,
+      rawOcrText: result.rawOcrText,
+      processedText: result.processedText,
+      debugInfo: result.logs,
+    );
+  }
+
+  /// iOS path: YOLO OBB detection + crop + OCR
   Future<WaterMeterResult?> processWaterMeterImage(Uint8List imageBytes, {bool isOnline = false}) async {
     final croppedBytesAfter = await runOBBDetectionAndCrop(imageBytes);
     if (isOnline) {
@@ -50,317 +97,6 @@ class WaterMeterSdkUltralyticsYolo {
     }
   }
 
-  /// Test scenario: detect + draw bbox + crop + OCR, return rich result with logs
-  Future<DetectionTestResult> processWithScenario(
-    Uint8List imageBytes,
-    YoloScenario scenario, {
-    bool isOnline = false,
-  }) async {
-    final logs = <String>[];
-    final timestamp = DateTime.now();
-
-    // Decode original image
-    final originalImage = img.decodeImage(imageBytes);
-    if (originalImage == null) {
-      return DetectionTestResult(
-        scenario: scenario,
-        timestamp: timestamp,
-        obbDetections: [],
-        totalDetections: 0,
-        ocrReading: '',
-        ocrConfidence: 0,
-        logs: ['ERROR: Failed to decode input image'],
-      );
-    }
-
-    final inputW = originalImage.width;
-    final inputH = originalImage.height;
-    logs.add('Input image: ${inputW}x$inputH');
-
-    // Resize to 416x416
-    final resizedImage = img.copyResize(originalImage, width: 416, height: 416);
-    final resizedImageBytes = Uint8List.fromList(img.encodePng(resizedImage));
-    logs.add('Resized to: 416x416');
-
-    // Run YOLO prediction
-    logs.add('Running YOLO predict...');
-    final results = await yolo.predict(resizedImageBytes);
-    final obbList = results['obb'] as List<dynamic>? ?? [];
-    logs.add('Result keys: ${results.keys.toList()}');
-    logs.add('Total OBB detections: ${obbList.length}');
-
-    // Parse all detections
-    final allDetections = <Map<String, dynamic>>[];
-    for (int idx = 0; idx < obbList.length; idx++) {
-      final detection = obbList[idx] as Map<dynamic, dynamic>;
-      final points = detection['points'] as List<dynamic>? ?? [];
-      final confidence = (detection['confidence'] as num?)?.toDouble() ?? 0.0;
-      final className = detection['class']?.toString() ?? 'unknown';
-
-      final det = <String, dynamic>{
-        'class': className,
-        'confidence': confidence,
-        'points': points,
-        'index': idx,
-      };
-
-      // Log raw detection
-      logs.add('--- Detection #$idx ---');
-      logs.add('  class=$className confidence=${confidence.toStringAsFixed(4)}');
-      logs.add('  points_count=${points.length}');
-
-      if (points.length == 4) {
-        for (int j = 0; j < points.length; j++) {
-          final p = points[j] as Map<dynamic, dynamic>;
-          final x = (p['x'] as num).toDouble();
-          final y = (p['y'] as num).toDouble();
-          logs.add('  P$j=($x, $y)');
-          det['P${j}_x'] = x;
-          det['P${j}_y'] = y;
-        }
-
-        // Check coordinate format
-        final isNormalized = points.every((p) {
-          final m = p as Map;
-          final x = (m['x'] as num).toDouble();
-          final y = (m['y'] as num).toDouble();
-          return x >= 0 && x <= 1.0 && y >= 0 && y <= 1.0;
-        });
-        det['isNormalized'] = isNormalized;
-        logs.add('  isNormalized=$isNormalized');
-      }
-
-      allDetections.add(det);
-    }
-
-    // Draw bounding boxes on resized image (for visualization)
-    final bboxImage = img.Image.from(resizedImage);
-    _drawAllBoundingBoxes(bboxImage, obbList, scenario, logs);
-    final bboxImageBytes = Uint8List.fromList(img.encodePng(bboxImage));
-
-    // Crop based on scenario
-    Uint8List? croppedBytes;
-    if (obbList.isNotEmpty) {
-      try {
-        if (scenario == YoloScenario.pubCache) {
-          // Scenario 1: pub cache - Android uses normalized coords
-          logs.add('Scenario 1: Using Android (normalized) crop logic');
-          croppedBytes = await _cropScenarioPubCache(resizedImageBytes, obbList, logs);
-        } else {
-          // Scenario 2: local fork - Android uses iOS-like logic
-          logs.add('Scenario 2: Using iOS-like crop logic');
-          croppedBytes = _cropScenarioLocalFork(resizedImageBytes, obbList, logs);
-        }
-      } catch (e) {
-        logs.add('ERROR during crop: $e');
-      }
-    } else {
-      logs.add('No OBB detections - skipping crop');
-    }
-
-    // OCR
-    String ocrReading = '';
-    double ocrConfidence = 0;
-    String? rawOcrText;
-    String? processedText;
-
-    final bytesForOcr = croppedBytes ?? resizedImageBytes;
-    logs.add('Running OCR on ${croppedBytes != null ? "cropped" : "resized"} image...');
-
-    if (isOnline) {
-      try {
-        final tempFile = await saveBytesToTempFile(bytesForOcr, 'cropped_test.jpg');
-        final ocrApi = GetNumberOCR();
-        final result = await ocrApi.ocrImage(tempFile);
-        ocrReading = result ?? '';
-        rawOcrText = result;
-        logs.add('Online OCR result: $ocrReading');
-      } catch (e) {
-        logs.add('Online OCR error: $e');
-      }
-    } else {
-      try {
-        final ocrResult = await _ocrService.processImage(bytesForOcr);
-        ocrReading = ocrResult.reading;
-        ocrConfidence = ocrResult.confidence;
-        rawOcrText = ocrResult.rawOcrText;
-        processedText = ocrResult.processedText;
-        logs.add('Offline OCR reading: $ocrReading');
-        logs.add('Offline OCR confidence: ${(ocrConfidence * 100).toStringAsFixed(1)}%');
-        if (rawOcrText != null) logs.add('Raw OCR text: $rawOcrText');
-        if (processedText != null) logs.add('Processed text: $processedText');
-      } catch (e) {
-        logs.add('Offline OCR error: $e');
-      }
-    }
-
-    return DetectionTestResult(
-      scenario: scenario,
-      timestamp: timestamp,
-      obbDetections: allDetections,
-      totalDetections: obbList.length,
-      inputImageWithBBox: bboxImageBytes,
-      croppedImage: croppedBytes,
-      ocrReading: ocrReading,
-      ocrConfidence: ocrConfidence,
-      rawOcrText: rawOcrText,
-      processedText: processedText,
-      logs: logs,
-      inputWidth: inputW,
-      inputHeight: inputH,
-    );
-  }
-
-  /// Draw all OBB bounding boxes on the image
-  void _drawAllBoundingBoxes(
-    img.Image image,
-    List<dynamic> obbList,
-    YoloScenario scenario,
-    List<String> logs,
-  ) {
-    final colors = [
-      img.ColorRgb8(0, 255, 0),   // Green
-      img.ColorRgb8(255, 0, 0),   // Red
-      img.ColorRgb8(255, 255, 0), // Yellow
-      img.ColorRgb8(0, 255, 255), // Cyan
-    ];
-
-    final pointColors = [
-      img.ColorRgb8(255, 0, 0),   // P0: Red
-      img.ColorRgb8(0, 255, 0),   // P1: Green
-      img.ColorRgb8(0, 0, 255),   // P2: Blue
-      img.ColorRgb8(255, 255, 0), // P3: Yellow
-    ];
-
-    for (int idx = 0; idx < obbList.length; idx++) {
-      final detection = obbList[idx] as Map<dynamic, dynamic>;
-      final points = detection['points'] as List<dynamic>? ?? [];
-      final confidence = (detection['confidence'] as num?)?.toDouble() ?? 0.0;
-
-      if (points.length != 4) continue;
-
-      // Determine pixel points based on coordinate format
-      final rawPoints = points.map((p) {
-        final m = p as Map<dynamic, dynamic>;
-        return {
-          'x': (m['x'] as num).toDouble(),
-          'y': (m['y'] as num).toDouble(),
-        };
-      }).toList();
-
-      final isNormalized = rawPoints.every(
-        (p) => p['x']! >= 0 && p['x']! <= 1.0 && p['y']! >= 0 && p['y']! <= 1.0,
-      );
-
-      List<Map<String, double>> pixelPoints;
-      if (isNormalized) {
-        pixelPoints = rawPoints.map((p) => {
-          'x': p['x']! * image.width,
-          'y': p['y']! * image.height,
-        }).toList();
-      } else {
-        pixelPoints = rawPoints;
-      }
-
-      final color = colors[idx % colors.length];
-      logs.add('Drawing bbox #$idx conf=${confidence.toStringAsFixed(3)} normalized=$isNormalized');
-
-      // Draw 4 edges
-      for (int i = 0; i < 4; i++) {
-        final p1 = pixelPoints[i];
-        final p2 = pixelPoints[(i + 1) % 4];
-        img.drawLine(
-          image,
-          x1: p1['x']!.round(),
-          y1: p1['y']!.round(),
-          x2: p2['x']!.round(),
-          y2: p2['y']!.round(),
-          color: color,
-          thickness: 3,
-        );
-      }
-
-      // Draw corner points
-      for (int i = 0; i < 4; i++) {
-        final p = pixelPoints[i];
-        img.drawCircle(
-          image,
-          x: p['x']!.round(),
-          y: p['y']!.round(),
-          radius: 5,
-          color: img.ColorRgb8(255, 255, 255),
-        );
-        img.drawCircle(
-          image,
-          x: p['x']!.round(),
-          y: p['y']!.round(),
-          radius: 3,
-          color: pointColors[i],
-        );
-      }
-    }
-  }
-
-  /// Scenario 1 (pub cache): Android normalized coords crop
-  Future<Uint8List?> _cropScenarioPubCache(
-    Uint8List resizedImageBytes,
-    List<dynamic> obbList,
-    List<String> logs,
-  ) async {
-    final validDetections = <Map<String, dynamic>>[];
-    for (final detection in obbList) {
-      final boxes = detection as Map<dynamic, dynamic>;
-      final points = boxes['points'] as List<dynamic>? ?? [];
-      final confidence = (boxes['confidence'] as num).toDouble();
-
-      if (points.length != 4) continue;
-      if (confidence <= 0.2 || confidence >= 1.0) continue;
-
-      final isNormalized = points.every((p) {
-        final m = p as Map;
-        final x = (m['x'] as num).toDouble();
-        final y = (m['y'] as num).toDouble();
-        return x >= 0 && x <= 1.0 && y >= 0 && y <= 1.0;
-      });
-
-      if (isNormalized) {
-        validDetections.add({'points': points, 'confidence': confidence});
-        logs.add('  Valid detection: conf=${confidence.toStringAsFixed(4)} normalized=true');
-      }
-    }
-
-    if (validDetections.isEmpty) {
-      logs.add('  No valid detections for pub cache crop');
-      return null;
-    }
-
-    validDetections.sort((a, b) => (b['confidence'] as double).compareTo(a['confidence'] as double));
-    final best = validDetections.first;
-    logs.add('  Best detection: conf=${(best['confidence'] as double).toStringAsFixed(4)}');
-    return cropImageFromOBB(resizedImageBytes, best['points'] as List<dynamic>);
-  }
-
-  /// Scenario 2 (local fork): iOS-like crop
-  Uint8List? _cropScenarioLocalFork(
-    Uint8List resizedImageBytes,
-    List<dynamic> obbList,
-    List<String> logs,
-  ) {
-    for (final detection in obbList) {
-      final boxes = detection as Map<dynamic, dynamic>;
-      final points = boxes['points'] as List<dynamic>? ?? [];
-      final confidence = (boxes['confidence'] as num?)?.toDouble() ?? 0.0;
-
-      if (points.length != 4) continue;
-      if (confidence <= 0.2 || confidence >= 1.0) continue;
-
-      logs.add('  Using iOS-like crop for conf=${confidence.toStringAsFixed(4)}');
-      return cropImageFromOBB(resizedImageBytes, points);
-    }
-    logs.add('  No valid detections for local fork crop');
-    return null;
-  }
-
   Future<File> saveBytesToTempFile(Uint8List bytes, String filename) async {
     final tempDir = await getTemporaryDirectory();
     final file = File('${tempDir.path}/$filename');
@@ -375,7 +111,7 @@ class WaterMeterSdkUltralyticsYolo {
     final resizedImage = img.copyResize(originalImage, width: 416, height: 416);
     final resizedImageBytes = Uint8List.fromList(img.encodePng(resizedImage));
 
-    final results = await yolo.predict(resizedImageBytes);
+    final results = await _yolo!.predict(resizedImageBytes);
     final obbList = results['obb'] as List<dynamic>;
 
     if (obbList.isNotEmpty) {
@@ -430,7 +166,7 @@ class WaterMeterSdkUltralyticsYolo {
     return Uint8List.fromList(img.encodePng(croppedImage));
   }
 
-  /// Scenario 3: Native OBB detection via TFLite method channel (android_2 pipeline)
+  /// Android path: Native OBB detection via TFLite method channel
   Future<DetectionTestResult> processWithNativeObb(
     Uint8List imageBytes, {
     bool isOnline = false,
@@ -591,8 +327,9 @@ class WaterMeterSdkUltralyticsYolo {
   }
 
   Future<void> dispose() async {
-    await yolo.dispose();
+    if (Platform.isIOS && _yolo != null) {
+      await _yolo!.dispose();
+    }
     await _ocrService.dispose();
   }
 }
-

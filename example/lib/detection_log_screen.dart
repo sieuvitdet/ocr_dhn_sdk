@@ -15,17 +15,13 @@ class DetectionLogScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           switch (result.scenario) {
-            YoloScenario.pubCache => 'Log: S1 (Pub Cache)',
-            YoloScenario.localFork => 'Log: S2 (Local Fork)',
-            YoloScenario.oldVersion => 'Log: S0 (YOLO Old Version)',
-            YoloScenario.nativeObb => 'Log: S3 (Native OBB)',
+            YoloScenario.nativeObb => 'Log: Native OBB (Android)',
+            YoloScenario.iosYolo => 'Log: YOLO OBB (iOS)',
           },
         ),
         backgroundColor: switch (result.scenario) {
-          YoloScenario.pubCache => Colors.blue,
-          YoloScenario.localFork => Colors.orange,
-          YoloScenario.oldVersion => Colors.teal,
           YoloScenario.nativeObb => Colors.green,
+          YoloScenario.iosYolo => Colors.blue,
         },
         foregroundColor: Colors.white,
         actions: [
@@ -55,10 +51,8 @@ class DetectionLogScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _infoRow('Scenario', switch (result.scenario) {
-                    YoloScenario.pubCache => '1 - Pub Cache (default ultralytics_yolo)',
-                    YoloScenario.localFork => '2 - Local Fork (/packages)',
-                    YoloScenario.oldVersion => '0 - YOLO Old Version (yolo11n-obb)',
-                    YoloScenario.nativeObb => '3 - Native OBB (TFLite method channel)',
+                    YoloScenario.nativeObb => 'Android - Native OBB (TFLite)',
+                    YoloScenario.iosYolo => 'iOS - Dart YOLO OBB',
                   }),
                 _infoRow('Time', result.timestamp.toString()),
                 _infoRow('Input', '${result.inputWidth}x${result.inputHeight}'),

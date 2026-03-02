@@ -1,20 +1,12 @@
 import 'dart:typed_data';
 
-/// Enum for test scenarios
+/// Enum for detection scenarios
 enum YoloScenario {
-  /// Scenario 1: ultralytics_yolo from pub cache (default package)
-  /// Android returns normalized coordinates
-  pubCache,
-
-  /// Scenario 2: ultralytics_yolo from /packages (local fork)
-  /// Android modified .kt to return data like iOS (pixel coordinates)
-  localFork,
-
-  /// Scenario 0: YOLO Old Version (yolo11n-obb model)
-  oldVersion,
-
-  /// Scenario 3: Native OBB via TFLite method channel (android_2 pipeline)
+  /// Android: Native OBB via TFLite method channel
   nativeObb,
+
+  /// iOS: Dart-side YOLO OBB detection
+  iosYolo,
 }
 
 /// Rich result from detection test including all debug data
@@ -69,10 +61,8 @@ class DetectionTestResult {
     buf.writeln('========== DETECTION TEST LOG ==========');
     buf.writeln('Timestamp: ${timestamp.toIso8601String()}');
     final scenarioLabel = switch (scenario) {
-      YoloScenario.pubCache => '1 - Pub Cache (default)',
-      YoloScenario.localFork => '2 - Local Fork (/packages)',
-      YoloScenario.oldVersion => '0 - YOLO Old Version (yolo11n-obb)',
-      YoloScenario.nativeObb => '3 - Native OBB (TFLite method channel)',
+      YoloScenario.nativeObb => 'Android - Native OBB (TFLite)',
+      YoloScenario.iosYolo => 'iOS - Dart YOLO OBB',
     };
     buf.writeln('Scenario: $scenarioLabel');
     buf.writeln('');
