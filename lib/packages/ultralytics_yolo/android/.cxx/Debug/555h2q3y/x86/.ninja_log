@@ -1,3 +1,4 @@
 # ninja log v5
 0	646	1772445574561696394	CMakeFiles/ultralytics.dir/native-lib.cpp.o	d9d3e2ffc65a37bd
 681	831	1772445574792241565	/Volumes/DucsM1/ocr_dhn_sdk_flutter/ocr_dhn_sdk/example/build/ultralytics_yolo/intermediates/cxx/Debug/555h2q3y/obj/x86/libultralytics.so	f058c0a8c440d676
+5	95	1772693172686788883	/Volumes/DucsM1/ocr_dhn_sdk_flutter/ocr_dhn_sdk/example/build/ultralytics_yolo/intermediates/cxx/Debug/555h2q3y/obj/x86/libultralytics.so	f058c0a8c440d676

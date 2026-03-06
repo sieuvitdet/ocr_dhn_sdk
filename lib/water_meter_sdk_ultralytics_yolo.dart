@@ -9,11 +9,17 @@ import 'package:water_meter_sdk/models/water_meter_result.dart';
 import 'package:water_meter_sdk/models/detection_test_result.dart';
 import 'package:ultralytics_yolo/yolo.dart';
 import 'package:water_meter_sdk/services/water_meter_ocr_service.dart';
+import 'package:water_meter_sdk/services/paddle_ocr_service.dart';
 
+/// OCR engine selection
+enum OcrEngine { mlKit, paddleOcr }
 
 class WaterMeterSdkUltralyticsYolo {
   static const _methodChannel = MethodChannel('water_meter_sdk');
   final WaterMeterOCRService _ocrService = WaterMeterOCRService();
+  final PaddleOCRService _paddleOcrService = PaddleOCRService();
+  /// Switch between OCR engines at runtime.
+  OcrEngine ocrEngine = OcrEngine.paddleOcr;
   YOLO? _yolo;
   bool _isInitialized = false;
   Future<void>? _initFuture;
@@ -40,6 +46,14 @@ class WaterMeterSdkUltralyticsYolo {
   }
 
   Future<void> _doInit() async {
+    // Initialize PaddleOCR engine (cross-platform ONNX)
+    try {
+      await _paddleOcrService.init();
+    } catch (e) {
+      print('PaddleOCR init failed, falling back to ML Kit: $e');
+      ocrEngine = OcrEngine.mlKit;
+    }
+
     if (Platform.isAndroid) {
       // Android uses native TFLite detection via method channel - no YOLO needed
       _isInitialized = true;
@@ -55,7 +69,7 @@ class WaterMeterSdkUltralyticsYolo {
   }
 
   /// Unified entry point: auto-routes Android → native TFLite, iOS → Dart YOLO
-  Future<WaterMeterResult> processImage(Uint8List imageBytes, {bool isOnline = false}) async {
+  Future<WaterMeterResult> processImage(Uint8List imageBytes, {bool isOnline = true}) async {
     if (!_isInitialized) {
       throw StateError('SDK not initialized. Call init() first.');
     }
@@ -80,20 +94,67 @@ class WaterMeterSdkUltralyticsYolo {
     );
   }
 
+  /// Run OCR using the currently selected engine.
+  /// Uses multi-orientation strategy: tries 0°/90°/270° and picks best.
+  /// Public so callers (e.g. example app) can run local OCR on pre-cropped bytes.
+  Future<WaterMeterResult> runLocalOcr(Uint8List imageBytes) async {
+    if (ocrEngine == OcrEngine.paddleOcr && _paddleOcrService.isInitialized) {
+      // Multi-orientation: try original + rotations, pick best result
+      final result =
+          await _paddleOcrService.recognizeMultiOrientation(imageBytes);
+      final rawText = result.rawText;
+      final candidates = result.candidates;
+      final orientation = result.orientation;
+      final correctedRaw = PaddleOCRService.correctRawText(rawText);
+      final bestReading =
+          candidates.isNotEmpty ? candidates.first.text : '';
+      final bestConf =
+          candidates.isNotEmpty ? candidates.first.confidence : 0.0;
+
+      final debugInfo = <String>[
+        'Engine: PaddleOCR (ONNX, multi-orientation, beam w=${PaddleOCRService.beamWidth})',
+        'Orientation used: $orientation',
+        'Raw (all chars): "$rawText"',
+        'Raw corrected: "$correctedRaw"',
+        'Best reading: "$bestReading" (conf: ${(bestConf * 100).toStringAsFixed(1)}%)',
+      ];
+      if (candidates.length > 1) {
+        debugInfo.add('--- All candidates (${candidates.length}) ---');
+        for (int i = 0; i < candidates.length; i++) {
+          debugInfo.add('  #${i + 1}: ${candidates[i]}');
+        }
+      }
+
+      return WaterMeterResult(
+        reading: bestReading,
+        confidence: bestConf,
+        imageBytes: imageBytes,
+        rawOcrText: rawText,
+        processedText: bestReading,
+        debugInfo: debugInfo,
+        candidates: candidates,
+      );
+    } else {
+      return await _ocrService.processImage(imageBytes);
+    }
+  }
+
   /// iOS path: YOLO OBB detection + crop + OCR
   Future<WaterMeterResult?> processWaterMeterImage(Uint8List imageBytes, {bool isOnline = false}) async {
-    final croppedBytesAfter = await runOBBDetectionAndCrop(imageBytes);
+    var croppedBytesAfter = await runOBBDetectionAndCrop(imageBytes);
+    // Ensure digits are horizontal before OCR
+    croppedBytesAfter = _ensureLandscape(croppedBytesAfter, null);
     if (isOnline) {
       final tempFile = await saveBytesToTempFile(croppedBytesAfter, 'cropped.jpg');
       final ocrApi = GetNumberOCR();
-      final result = await ocrApi.ocrImage(tempFile);
+      final apiResult = await ocrApi.ocrImage(tempFile);
       return WaterMeterResult(
         imageBytes: croppedBytesAfter,
-        reading: result ?? '',
-        confidence: 0,
+        reading: apiResult?.text ?? '',
+        confidence: apiResult?.score ?? 0,
       );
     } else {
-      return await _ocrService.processImage(croppedBytesAfter);
+      return await runLocalOcr(croppedBytesAfter);
     }
   }
 
@@ -104,10 +165,18 @@ class WaterMeterSdkUltralyticsYolo {
     return file;
   }
 
+  /// Decode image bytes with EXIF orientation applied.
+  static img.Image? decodeWithExif(Uint8List imageBytes) {
+    final image = img.decodeImage(imageBytes);
+    if (image == null) return null;
+    return img.bakeOrientation(image);
+  }
+
   Future<Uint8List> runOBBDetectionAndCrop(Uint8List imageBytes) async {
-    final originalImage = img.decodeImage(imageBytes);
+    final originalImage = decodeWithExif(imageBytes);
     if (originalImage == null) return imageBytes;
 
+    // Resize to 416x416 for YOLO detection only
     final resizedImage = img.copyResize(originalImage, width: 416, height: 416);
     final resizedImageBytes = Uint8List.fromList(img.encodePng(resizedImage));
 
@@ -122,17 +191,19 @@ class WaterMeterSdkUltralyticsYolo {
         if (points.isNotEmpty && points.length == 4
             && (boxes['confidence'] as num).toDouble() > 0.2
             && (boxes['confidence'] as num).toDouble() < 1) {
-          return cropImageFromOBB(resizedImageBytes, points);
+          // Crop from original image (full resolution, correct aspect ratio)
+          // Points are normalized [0,1] so they scale to any image size
+          return cropImageFromOBB(originalImage, points);
         }
       }
     }
     return imageBytes;
   }
 
-  Uint8List cropImageFromOBB(Uint8List imageBytes, List<dynamic> points) {
-    final image = img.decodeImage(imageBytes);
-    if (image == null) throw Exception('Failed to decode image for cropping');
+  Uint8List cropImageFromOBB(img.Image image, List<dynamic> points) {
 
+    // Parse points into a typed list for angle computation
+    final typedPoints = <Map<String, double>>[];
     double minX = double.infinity;
     double maxX = double.negativeInfinity;
     double minY = double.infinity;
@@ -140,16 +211,20 @@ class WaterMeterSdkUltralyticsYolo {
 
     for (final point in points) {
       final pointMap = point as Map<dynamic, dynamic>;
-      final x = (pointMap['x'] as num).toDouble() * image.width;
-      final y = (pointMap['y'] as num).toDouble() * image.height;
+      final nx = (pointMap['x'] as num).toDouble();
+      final ny = (pointMap['y'] as num).toDouble();
+      typedPoints.add({'x': nx, 'y': ny});
 
+      final x = nx * image.width;
+      final y = ny * image.height;
       minX = math.min(minX, x);
       maxX = math.max(maxX, x);
       minY = math.min(minY, y);
       maxY = math.max(maxY, y);
     }
 
-    final padding = Platform.isIOS ? 15 : 0;
+    // Extra padding to give rotation headroom
+    final padding = Platform.isIOS ? 20 : 5;
     minX = math.max(0, minX - padding);
     minY = math.max(0, minY - padding);
     maxX = math.min(image.width.toDouble(), maxX + padding);
@@ -163,7 +238,14 @@ class WaterMeterSdkUltralyticsYolo {
       height: (maxY - minY).round(),
     );
 
-    return Uint8List.fromList(img.encodePng(croppedImage));
+    // Compute angle and deskew if tilted
+    final angleDeg = _computeAngleFromPoints(
+      typedPoints,
+      image.width.toDouble(),
+      image.height.toDouble(),
+    );
+
+    return _rotateAndCrop(croppedImage, angleDeg);
   }
 
   /// Android path: Native OBB detection via TFLite method channel
@@ -271,7 +353,25 @@ class WaterMeterSdkUltralyticsYolo {
 
     // Get annotated and cropped images from native
     final annotatedImageBytes = nativeResult['annotatedImage'] as Uint8List?;
-    final croppedImageBytes = nativeResult['croppedImage'] as Uint8List?;
+    Uint8List? croppedImageBytes = nativeResult['croppedImage'] as Uint8List?;
+
+    // Deskew the native-cropped image using the detected angle
+    if (croppedImageBytes != null && allDetections.isNotEmpty) {
+      final bestDet = allDetections.first;
+      final angleDeg = (bestDet['angleDeg'] as num?)?.toDouble() ?? 0.0;
+      if (angleDeg.abs() > 2.0) {
+        logs.add('Deskewing cropped image by ${angleDeg.toStringAsFixed(1)}°');
+        final croppedImg = img.decodeImage(croppedImageBytes);
+        if (croppedImg != null) {
+          croppedImageBytes = _rotateAndCrop(croppedImg, angleDeg);
+        }
+      }
+    }
+
+    // Ensure cropped image is landscape (digits horizontal)
+    if (croppedImageBytes != null) {
+      croppedImageBytes = _ensureLandscape(croppedImageBytes, logs);
+    }
 
     // OCR on cropped image
     String ocrReading = '';
@@ -286,20 +386,23 @@ class WaterMeterSdkUltralyticsYolo {
       try {
         final tempFile = await saveBytesToTempFile(bytesForOcr, 'native_obb_cropped.jpg');
         final ocrApi = GetNumberOCR();
-        final result = await ocrApi.ocrImage(tempFile);
-        ocrReading = result ?? '';
-        rawOcrText = result;
-        logs.add('Online OCR result: $ocrReading');
+        final apiResult = await ocrApi.ocrImage(tempFile);
+        ocrReading = apiResult?.text ?? '';
+        ocrConfidence = apiResult?.score ?? 0;
+        rawOcrText = apiResult?.text;
+        logs.add('Online OCR result: $ocrReading (conf: ${(ocrConfidence * 100).toStringAsFixed(1)}%)');
       } catch (e) {
         logs.add('Online OCR error: $e');
       }
     } else {
       try {
-        final ocrResult = await _ocrService.processImage(bytesForOcr);
+        logs.add('OCR engine: ${ocrEngine.name}');
+        final ocrResult = await runLocalOcr(bytesForOcr);
         ocrReading = ocrResult.reading;
         ocrConfidence = ocrResult.confidence;
         rawOcrText = ocrResult.rawOcrText;
         processedText = ocrResult.processedText;
+        if (ocrResult.debugInfo != null) logs.addAll(ocrResult.debugInfo!);
         logs.add('Offline OCR reading: $ocrReading');
         logs.add('Offline OCR confidence: ${(ocrConfidence * 100).toStringAsFixed(1)}%');
       } catch (e) {
@@ -326,10 +429,283 @@ class WaterMeterSdkUltralyticsYolo {
     );
   }
 
+  /// Run OBB detection + offline OCR on a single image.
+  /// Returns a map with: originalImage, croppedImage, ocrResult, logs.
+  Future<Map<String, dynamic>> testSingleImageOffline(Uint8List imageBytes, {String? imageName}) async {
+    if (!_isInitialized) {
+      throw StateError('SDK not initialized. Call init() first.');
+    }
+
+    final logs = <String>[];
+    final name = imageName ?? 'unknown';
+    logs.add('=== Testing: $name ===');
+
+    // Decode with EXIF
+    final decoded = decodeWithExif(imageBytes);
+    if (decoded == null) {
+      logs.add('ERROR: Failed to decode image');
+      return {
+        'imageName': name,
+        'originalImage': imageBytes,
+        'croppedImage': null,
+        'ocrResult': WaterMeterResult.empty(),
+        'logs': logs,
+      };
+    }
+    logs.add('Decoded: ${decoded.width}x${decoded.height}');
+
+    Uint8List croppedBytes;
+    if (Platform.isAndroid) {
+      // Use native OBB
+      final result = await processWithNativeObb(imageBytes, isOnline: false);
+      croppedBytes = result.croppedImage ?? imageBytes;
+      logs.addAll(result.logs);
+
+      return {
+        'imageName': name,
+        'originalImage': imageBytes,
+        'croppedImage': croppedBytes,
+        'annotatedImage': result.inputImageWithBBox,
+        'ocrResult': WaterMeterResult(
+          reading: result.ocrReading,
+          confidence: result.ocrConfidence,
+          imageBytes: croppedBytes,
+          rawOcrText: result.rawOcrText,
+          processedText: result.processedText,
+          debugInfo: logs,
+        ),
+        'logs': logs,
+      };
+    } else {
+      // iOS: use Dart YOLO OBB
+      croppedBytes = await runOBBDetectionAndCrop(imageBytes);
+      final isCropped = croppedBytes != imageBytes;
+      logs.add(isCropped ? 'OBB detected and cropped' : 'No OBB detection, using original');
+
+      // Run local OCR on cropped image using selected engine
+      logs.add('OCR engine: ${ocrEngine.name}');
+      final ocrResult = await runLocalOcr(croppedBytes);
+      logs.add('OCR reading: ${ocrResult.reading}');
+      logs.add('OCR confidence: ${(ocrResult.confidence * 100).toStringAsFixed(1)}%');
+      if (ocrResult.debugInfo != null) logs.addAll(ocrResult.debugInfo!);
+
+      return {
+        'imageName': name,
+        'originalImage': imageBytes,
+        'croppedImage': croppedBytes,
+        'ocrResult': ocrResult,
+        'logs': logs,
+      };
+    }
+  }
+
+  /// Run OBB + offline OCR on all images in [assetPaths].
+  /// Each path should be a Flutter asset path like 'assets/test_images/sample.jpg'.
+  /// Returns a list of result maps (see [testSingleImageOffline]).
+  Future<List<Map<String, dynamic>>> testBatchOffline(List<String> assetPaths) async {
+    final results = <Map<String, dynamic>>[];
+
+    for (final path in assetPaths) {
+      try {
+        final data = await rootBundle.load(path);
+        final bytes = data.buffer.asUint8List();
+        final name = path.split('/').last;
+        final result = await testSingleImageOffline(bytes, imageName: name);
+        results.add(result);
+      } catch (e) {
+        results.add({
+          'imageName': path.split('/').last,
+          'originalImage': null,
+          'croppedImage': null,
+          'ocrResult': WaterMeterResult(
+            reading: '',
+            confidence: 0,
+            debugInfo: ['Error loading asset $path: $e'],
+          ),
+          'logs': ['Error loading asset $path: $e'],
+        });
+      }
+    }
+
+    return results;
+  }
+
+  /// Ensure cropped water meter image has digits in horizontal orientation.
+  /// Water meter digit strips are always wider than tall (landscape).
+  /// If the cropped image is portrait, rotate 90° CW to make it landscape.
+  static Uint8List _ensureLandscape(Uint8List imageBytes, List<String>? logs) {
+    final decoded = decodeWithExif(imageBytes);
+    if (decoded == null) return imageBytes;
+
+    // Already landscape or square — no rotation needed
+    if (decoded.width >= decoded.height) {
+      return imageBytes;
+    }
+
+    // Portrait image: digits are vertical, rotate 90° CW
+    logs?.add('Auto-rotating portrait image (${decoded.width}x${decoded.height}) → landscape');
+    final rotated = img.copyRotate(decoded, angle: 90);
+    return Uint8List.fromList(img.encodePng(rotated));
+  }
+
+  /// Compute rotation angle (degrees) from 4 OBB corner points.
+  /// Points are in normalized [0..1] coordinates; [imgW]/[imgH] convert to pixels.
+  /// Returns the angle of the longer edge (the "width" edge of a water meter).
+  static double _computeAngleFromPoints(
+    List<Map<String, double>> pts,
+    double imgW,
+    double imgH,
+  ) {
+    // Convert normalised → pixel
+    final px = pts.map((p) => p['x']! * imgW).toList();
+    final py = pts.map((p) => p['y']! * imgH).toList();
+
+    // Edge 0→1
+    final dx01 = px[1] - px[0];
+    final dy01 = py[1] - py[0];
+    final len01 = math.sqrt(dx01 * dx01 + dy01 * dy01);
+
+    // Edge 1→2
+    final dx12 = px[2] - px[1];
+    final dy12 = py[2] - py[1];
+    final len12 = math.sqrt(dx12 * dx12 + dy12 * dy12);
+
+    // The longer edge is the "width" edge (meters are wider than tall)
+    double angle;
+    if (len01 >= len12) {
+      angle = math.atan2(dy01, dx01);
+    } else {
+      angle = math.atan2(dy12, dx12);
+    }
+
+    // Convert to degrees
+    return angle * 180.0 / math.pi;
+  }
+
+  /// Rotate [image] by -[angleDeg] to deskew, then center-crop to remove
+  /// black corners introduced by rotation.  Returns PNG bytes.
+  /// If |angleDeg| <= 2° the image is returned unchanged.
+  static Uint8List _rotateAndCrop(img.Image image, double angleDeg) {
+    if (angleDeg.abs() <= 2.0) {
+      return Uint8List.fromList(img.encodePng(image));
+    }
+
+    // Rotate by negative angle to make text horizontal
+    // Use linear interpolation for better quality at large angles (45-60°)
+    final rotated = img.copyRotate(image, angle: -angleDeg, interpolation: img.Interpolation.linear);
+
+    // After rotation the canvas grows; compute the largest axis-aligned
+    // rectangle inscribed in the original rectangle after rotation.
+    final radians = angleDeg.abs() * math.pi / 180.0;
+    final cosA = math.cos(radians);
+    final sinA = math.sin(radians);
+
+    final origW = image.width.toDouble();
+    final origH = image.height.toDouble();
+
+    // Inscribed rectangle dimensions inside rotated original rect
+    double newW, newH;
+    if (sinA == 0) {
+      newW = origW;
+      newH = origH;
+    } else {
+      newW = (origW * cosA - origH * sinA).abs();
+      newH = (origH * cosA - origW * sinA).abs();
+      // Clamp to ensure we don't exceed the original dimensions
+      newW = math.min(newW, origW);
+      newH = math.min(newH, origH);
+      // Fallback: if computed rect is too small, use 80% of rotated canvas
+      if (newW < origW * 0.5 || newH < origH * 0.5) {
+        newW = rotated.width * 0.85;
+        newH = rotated.height * 0.85;
+      }
+    }
+
+    final cropX = ((rotated.width - newW) / 2).round();
+    final cropY = ((rotated.height - newH) / 2).round();
+    final cropW = newW.round().clamp(1, rotated.width - cropX);
+    final cropH = newH.round().clamp(1, rotated.height - cropY);
+
+    final cropped = img.copyCrop(
+      rotated,
+      x: cropX,
+      y: cropY,
+      width: cropW,
+      height: cropH,
+    );
+
+    return Uint8List.fromList(img.encodePng(cropped));
+  }
+
+  /// Save cropped+EXIF-processed image to a directory.
+  /// Returns the saved file path.
+  static Future<String> saveProcessedImage(
+    Uint8List imageBytes,
+    String filename, {
+    String? directory,
+  }) async {
+    final dir = directory ?? (await getTemporaryDirectory()).path;
+    final saveDir = Directory('$dir/cropped_test_images');
+    if (!saveDir.existsSync()) {
+      saveDir.createSync(recursive: true);
+    }
+
+    // Apply EXIF orientation and re-encode clean
+    final decoded = decodeWithExif(imageBytes);
+    final Uint8List cleanBytes;
+    if (decoded != null) {
+      if (filename.toLowerCase().endsWith('.png')) {
+        cleanBytes = Uint8List.fromList(img.encodePng(decoded));
+      } else {
+        cleanBytes = Uint8List.fromList(img.encodeJpg(decoded, quality: 95));
+      }
+    } else {
+      cleanBytes = imageBytes;
+    }
+
+    final filePath = '${saveDir.path}/$filename';
+    File(filePath).writeAsBytesSync(cleanBytes);
+    return filePath;
+  }
+
+  /// Save all cropped images from batch test results to documents directory.
+  /// Returns the directory path where images were saved.
+  static Future<String> saveBatchCroppedImages(
+    List<Map<String, dynamic>> results,
+  ) async {
+    final docDir = await getApplicationDocumentsDirectory();
+    final saveDir = Directory('${docDir.path}/cropped_test_images');
+    if (saveDir.existsSync()) {
+      saveDir.deleteSync(recursive: true);
+    }
+    saveDir.createSync(recursive: true);
+
+    for (final result in results) {
+      final name = result['imageName'] as String? ?? 'unknown';
+      final croppedBytes = result['croppedImage'] as Uint8List?;
+      if (croppedBytes == null) continue;
+
+      final baseName = name.replaceAll(RegExp(r'\.[^.]+$'), '');
+      final filename = '${baseName}_cropped.jpg';
+
+      // Decode, apply EXIF, save clean JPEG
+      final decoded = decodeWithExif(croppedBytes);
+      if (decoded != null) {
+        final clean = Uint8List.fromList(img.encodeJpg(decoded, quality: 95));
+        File('${saveDir.path}/$filename').writeAsBytesSync(clean);
+      } else {
+        File('${saveDir.path}/$filename').writeAsBytesSync(croppedBytes);
+      }
+    }
+
+    return saveDir.path;
+  }
+
   Future<void> dispose() async {
     if (Platform.isIOS && _yolo != null) {
       await _yolo!.dispose();
     }
     await _ocrService.dispose();
+    await _paddleOcrService.dispose();
   }
 }

@@ -1,7 +1,12 @@
 PODS:
   - camera_avfoundation (0.0.1):
     - Flutter
+  - connectivity_plus (0.0.1):
+    - Flutter
   - Flutter (1.0.0)
+  - flutter_onnxruntime (0.0.1):
+    - Flutter
+    - onnxruntime-objc (= 1.22.0)
   - fluttertoast (0.0.2):
     - Flutter
   - google_mlkit_commons (0.11.1):
@@ -64,6 +69,11 @@ PODS:
     - nanopb/encode (= 3.30910.0)
   - nanopb/decode (3.30910.0)
   - nanopb/encode (3.30910.0)
+  - onnxruntime-c (1.22.0)
+  - onnxruntime-objc (1.22.0):
+    - onnxruntime-objc/Core (= 1.22.0)
+  - onnxruntime-objc/Core (1.22.0):
+    - onnxruntime-c (= 1.22.0)
   - permission_handler_apple (9.3.0):
     - Flutter
   - PromisesObjC (2.4.0)
@@ -74,7 +84,9 @@ PODS:
 
 DEPENDENCIES:
   - camera_avfoundation (from `.symlinks/plugins/camera_avfoundation/ios`)
+  - connectivity_plus (from `.symlinks/plugins/connectivity_plus/ios`)
   - Flutter (from `Flutter`)
+  - flutter_onnxruntime (from `.symlinks/plugins/flutter_onnxruntime/ios`)
   - fluttertoast (from `.symlinks/plugins/fluttertoast/ios`)
   - google_mlkit_commons (from `.symlinks/plugins/google_mlkit_commons/ios`)
   - google_mlkit_text_recognition (from `.symlinks/plugins/google_mlkit_text_recognition/ios`)
@@ -97,13 +109,19 @@ SPEC REPOS:
     - MLKitTextRecognitionCommon
     - MLKitVision
     - nanopb
+    - onnxruntime-c
+    - onnxruntime-objc
     - PromisesObjC
 
 EXTERNAL SOURCES:
   camera_avfoundation:
     :path: ".symlinks/plugins/camera_avfoundation/ios"
+  connectivity_plus:
+    :path: ".symlinks/plugins/connectivity_plus/ios"
   Flutter:
     :path: Flutter
+  flutter_onnxruntime:
+    :path: ".symlinks/plugins/flutter_onnxruntime/ios"
   fluttertoast:
     :path: ".symlinks/plugins/fluttertoast/ios"
   google_mlkit_commons:
@@ -123,7 +141,9 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   camera_avfoundation: 5675ca25298b6f81fa0a325188e7df62cc217741
+  connectivity_plus: cb623214f4e1f6ef8fe7403d580fdad517d2f7dd
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  flutter_onnxruntime: 515c2ab17b67fb027964ebbf2d02329771a482de
   fluttertoast: 2c67e14dce98bbdb200df9e1acf610d7a6264ea1
   google_mlkit_commons: a5e4ffae5bc59ea4c7b9025dc72cb6cb79dc1166
   google_mlkit_text_recognition: b3de5adb786ad7a0fe8e13618387b8d2df0f3c70
@@ -140,6 +160,8 @@ SPEC CHECKSUMS:
   MLKitTextRecognitionCommon: 234ceb1cfdfb5fceb4fd664943046609a2961cc2
   MLKitVision: 39a5a812db83c4a0794445088e567f3631c11961
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
+  onnxruntime-c: 7f778680e96145956c0a31945f260321eed2611a
+  onnxruntime-objc: 83d28b87525bd971259a66e153ea32b5d023de19
   permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   ultralytics_yolo: 650ea1417a5b3ef9b1acc55e6edef5385018d3b5

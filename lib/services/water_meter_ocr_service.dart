@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:math' as math;
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/water_meter_result.dart';
@@ -7,14 +8,15 @@ import 'package:image/image.dart' as img;
 
 class WaterMeterOCRService {
   final TextRecognizer _textRecognizer;
-  
+
   WaterMeterOCRService() : _textRecognizer = TextRecognizer();
 
-  Future<WaterMeterResult> processImage(Uint8List imageBytes, {String? imageFull}) async {
+  /// Main entry point: preprocess image then run OCR.
+  /// [imageBytes] is the cropped water meter region.
+  Future<WaterMeterResult> processImage(Uint8List imageBytes) async {
     try {
-      // Decode the image from bytes
+      // Decode with EXIF orientation applied
       var image = img.decodeImage(imageBytes);
-      
       if (image == null) {
         return WaterMeterResult(
           reading: '',
@@ -23,88 +25,35 @@ class WaterMeterOCRService {
         );
       }
 
-      // Try multiple preprocessing approaches
-      List<String> allResults = [];
-      img.Image? annotatedImage;
-      
-      // Approach 1: Original image
-      // var result1 = await _processWithSettings(image, imageBytes, 'original');
-      // allResults.add(result1);
-      
-      // // Approach 2: High contrast + crop center
-      // var image2 = img.copyResize(image, width: 800, height: 600);
-      // image2 = img.contrast(image2, contrast: 200);
-      // image2 = img.adjustColor(image2, brightness: 1.3);
-      // var result2 = await _processWithSettings(image2, imageBytes, 'high_contrast');
-      // allResults.add(result2);
-      
-      // Approach 3: Grayscale + threshold
-      // var image3 = img.grayscale(image);
-      // // Apply threshold to make text more distinct
-      // for (int y = 0; y < image3.height; y++) {
-      //   for (int x = 0; x < image3.width; x++) {
-      //     var pixel = image3.getPixel(x, y);
-      //     var r = pixel.r.toInt();
-      //     var g = pixel.g.toInt(); 
-      //     var b = pixel.b.toInt();
-      //     var luminance = (0.299 * r + 0.587 * g + 0.114 * b).round();
-      //     if (luminance > 128) {
-      //       image3.setPixel(x, y, img.ColorRgb8(255, 255, 255)); // White
-      //     } else {
-      //       image3.setPixel(x, y, img.ColorRgb8(0, 0, 0)); // Black
-      //     }
-      //   }
-      // }
-      var result3 = await _processWithSettings(image, imageBytes, 'threshold');
-      allResults.add(result3);
-      
-      // // Approach 4: Focus on center area only
-      // final centerX = image.width ~/ 2;
-      // final centerY = image.height ~/ 2;
-      // final cropSize = (image.width < image.height ? image.width : image.height) * 0.6 ~/ 1;
-      
-      // var image4 = img.copyCrop(
-      //   image,
-      //   x: centerX - cropSize ~/ 2,
-      //   y: centerY - cropSize ~/ 2,
-      //   width: cropSize,
-      //   height: cropSize,
-      // );
-      // image4 = img.contrast(image4, contrast: 180);
-      // var result4 = await _processWithSettings(image4, imageBytes, 'center_crop');
-      // allResults.add(result4);
+      // Apply EXIF orientation to avoid rotation/mirror issues
+      image = img.bakeOrientation(image);
 
-      // Find the best result and get annotated image
-      String bestReading = _selectBestFromMultipleResults(allResults);
-      
-      // Create annotated image with bounding boxes
-      annotatedImage = await _createAnnotatedImage(image, imageBytes);
-      
-      // Get the best raw and processed text (from the approach that gave the best reading)
-      String? bestRawText;
-      String? bestProcessedText;
-      if (bestReading.isNotEmpty) {
-        // Find which approach gave us the best reading
-        for (int i = 0; i < allResults.length; i++) {
-          if (allResults[i] == bestReading) {
-            // Get the corresponding raw and processed text
-            var ocrResult = await _getOcrResult(image, imageBytes, ['threshold'][i]);
-            if (ocrResult != null) {
-              bestRawText = ocrResult['raw'];
-              bestProcessedText = ocrResult['processed'];
-            }
-            break;
-          }
-        }
-      }
-      
+      final debugInfo = <String>[];
+      debugInfo.add('Original size: ${image.width}x${image.height}');
+
+      // --- Preprocessing pipeline ---
+      final preprocessed = _preprocessForOCR(image, debugInfo);
+
+      // Run OCR on preprocessed image
+      final ocrResult = await _runOCR(preprocessed, debugInfo);
+      final rawText = ocrResult['raw'] ?? '';
+      final reading = _extractMeterReading(rawText);
+
+      debugInfo.add('Raw OCR: $rawText');
+      debugInfo.add('Extracted reading: $reading');
+
+      // Create annotated image for debugging
+      final annotated = await _createAnnotatedImage(image, imageBytes);
+
       return WaterMeterResult(
-        reading: bestReading,
-        confidence: _calculateConfidence(bestReading),
-        imageBytes: annotatedImage != null ? Uint8List.fromList(img.encodeJpg(annotatedImage, quality: 95)) : null,
-        debugInfo: allResults,
-        rawOcrText: bestRawText,
-        processedText: bestProcessedText,
+        reading: reading,
+        confidence: _calculateConfidence(reading),
+        imageBytes: annotated != null
+            ? Uint8List.fromList(img.encodeJpg(annotated, quality: 95))
+            : null,
+        debugInfo: debugInfo,
+        rawOcrText: rawText,
+        processedText: reading,
       );
     } catch (e) {
       return WaterMeterResult(
@@ -114,319 +63,291 @@ class WaterMeterOCRService {
       );
     }
   }
-  
-  Future<img.Image?> _createAnnotatedImage(img.Image originalImage, Uint8List imageBytes) async {
+
+  /// Full preprocessing pipeline optimized for water meter digits.
+  /// Water meters have white/light digits on dark rotating drums.
+  img.Image _preprocessForOCR(img.Image source, List<String> debugInfo) {
+    var result = img.Image.from(source);
+
+    // 1. Upscale small images — ML Kit needs ~24px per character minimum.
+    //    For 5 digits we want at least 800px width.
+    const minWidth = 800;
+    if (result.width < minWidth) {
+      final scale = minWidth / result.width;
+      result = img.copyResize(
+        result,
+        width: minWidth,
+        height: (result.height * scale).round(),
+        interpolation: img.Interpolation.cubic,
+      );
+      debugInfo.add('Upscaled to ${result.width}x${result.height}');
+    }
+
+    // 2. Convert to grayscale
+    result = img.grayscale(result);
+    debugInfo.add('Converted to grayscale');
+
+    // 3. Invert: water meter has white digits on dark background.
+    //    OCR engines expect dark text on light background.
+    for (int y = 0; y < result.height; y++) {
+      for (int x = 0; x < result.width; x++) {
+        final pixel = result.getPixel(x, y);
+        final inverted = 255 - pixel.r.toInt();
+        result.setPixel(x, y, img.ColorRgb8(inverted, inverted, inverted));
+      }
+    }
+    debugInfo.add('Inverted (white-on-black → black-on-white)');
+
+    // 4. Otsu binarization for clean black/white separation
+    final threshold = _otsuThreshold(result);
+    debugInfo.add('Otsu threshold: $threshold');
+    for (int y = 0; y < result.height; y++) {
+      for (int x = 0; x < result.width; x++) {
+        final lum = result.getPixel(x, y).r.toInt();
+        final bw = lum > threshold ? 255 : 0;
+        result.setPixel(x, y, img.ColorRgb8(bw, bw, bw));
+      }
+    }
+    debugInfo.add('Applied Otsu binarization');
+
+    // 5. Light morphological closing to fill small gaps in digits
+    result = _morphClose(result, radius: 1);
+    debugInfo.add('Applied morphological closing');
+
+    // 6. Add white border padding — OCR works better when text doesn't touch edges
+    const padding = 20;
+    final padded = img.Image(
+      width: result.width + padding * 2,
+      height: result.height + padding * 2,
+    );
+    // Fill with white
+    for (int y = 0; y < padded.height; y++) {
+      for (int x = 0; x < padded.width; x++) {
+        padded.setPixel(x, y, img.ColorRgb8(255, 255, 255));
+      }
+    }
+    // Copy result into center
+    img.compositeImage(padded, result, dstX: padding, dstY: padding);
+    debugInfo.add('Added ${padding}px white border');
+
+    return padded;
+  }
+
+  /// Compute Otsu's threshold from a grayscale image.
+  int _otsuThreshold(img.Image gray) {
+    // Build histogram
+    final hist = List<int>.filled(256, 0);
+    final total = gray.width * gray.height;
+    for (int y = 0; y < gray.height; y++) {
+      for (int x = 0; x < gray.width; x++) {
+        hist[gray.getPixel(x, y).r.toInt()]++;
+      }
+    }
+
+    double sumAll = 0;
+    for (int i = 0; i < 256; i++) {
+      sumAll += i * hist[i];
+    }
+
+    double sumB = 0;
+    int wB = 0;
+    double maxVariance = 0;
+    int bestThreshold = 0;
+
+    for (int t = 0; t < 256; t++) {
+      wB += hist[t];
+      if (wB == 0) continue;
+      final wF = total - wB;
+      if (wF == 0) break;
+
+      sumB += t * hist[t];
+      final meanB = sumB / wB;
+      final meanF = (sumAll - sumB) / wF;
+      final variance = wB.toDouble() * wF.toDouble() * (meanB - meanF) * (meanB - meanF);
+
+      if (variance > maxVariance) {
+        maxVariance = variance;
+        bestThreshold = t;
+      }
+    }
+    return bestThreshold;
+  }
+
+  /// Simple morphological close (dilate then erode) with a square kernel.
+  img.Image _morphClose(img.Image src, {int radius = 1}) {
+    // Dilate: for each pixel, take the max in the neighborhood
+    final dilated = img.Image.from(src);
+    for (int y = radius; y < src.height - radius; y++) {
+      for (int x = radius; x < src.width - radius; x++) {
+        int maxVal = 0;
+        for (int dy = -radius; dy <= radius; dy++) {
+          for (int dx = -radius; dx <= radius; dx++) {
+            maxVal = math.max(maxVal, src.getPixel(x + dx, y + dy).r.toInt());
+          }
+        }
+        dilated.setPixel(x, y, img.ColorRgb8(maxVal, maxVal, maxVal));
+      }
+    }
+
+    // Erode: for each pixel, take the min in the neighborhood
+    final eroded = img.Image.from(dilated);
+    for (int y = radius; y < dilated.height - radius; y++) {
+      for (int x = radius; x < dilated.width - radius; x++) {
+        int minVal = 255;
+        for (int dy = -radius; dy <= radius; dy++) {
+          for (int dx = -radius; dx <= radius; dx++) {
+            minVal = math.min(minVal, dilated.getPixel(x + dx, y + dy).r.toInt());
+          }
+        }
+        eroded.setPixel(x, y, img.ColorRgb8(minVal, minVal, minVal));
+      }
+    }
+
+    return eroded;
+  }
+
+  /// Run Google ML Kit text recognition on a preprocessed image.
+  Future<Map<String, String>> _runOCR(img.Image image, List<String> debugInfo) async {
     try {
-      // Create a copy of the original image to draw on
-      var annotatedImage = img.Image.from(originalImage);
-      
-      // Process with OCR to get text blocks
       final tempDir = await getTemporaryDirectory();
-      final tempPath = '${tempDir.path}/temp_ocr.jpg';
-      File(tempPath).writeAsBytesSync(imageBytes);
-      
+      final tempPath = '${tempDir.path}/ocr_preprocessed.jpg';
+      File(tempPath).writeAsBytesSync(img.encodeJpg(image, quality: 95));
+
       final inputImage = InputImage.fromFilePath(tempPath);
       final recognizedText = await _textRecognizer.processImage(inputImage);
-      
-      // Draw blue bounding boxes around each text block
-      for (TextBlock block in recognizedText.blocks) {
-        final boundingBox = block.boundingBox;
-        if (boundingBox != null) {
-          // Draw blue rectangle around the text block
-          _drawRectangle(
-            annotatedImage,
-            boundingBox.left.toInt(),
-            boundingBox.top.toInt(),
-            boundingBox.right.toInt(),
-            boundingBox.bottom.toInt(),
-            img.ColorRgb8(0, 0, 255), // Blue color
-            3, // Line thickness
-          );
-          
-          // Optionally draw text label above the box
-          final text = block.text;
-          if (text.isNotEmpty) {
-            _drawText(
-              annotatedImage,
-              text,
-              boundingBox.left.toInt(),
-              (boundingBox.top - 20).clamp(0, annotatedImage.height - 1).toInt(),
-              img.ColorRgb8(255, 0, 0), // Red text
-            );
-          }
-        }
-      }
-      
-      // Clean up temp file
-      try {
-        File(tempPath).deleteSync();
-      } catch (e) {
-        // Ignore cleanup errors
-      }
-      
-      return annotatedImage;
-    } catch (e) {
-      print('Error creating annotated image: $e');
-      return null;
-    }
-  }
-  
-  void _drawRectangle(img.Image image, int x1, int y1, int x2, int y2, img.Color color, int thickness) {
-    // Draw horizontal lines
-    for (int i = 0; i < thickness; i++) {
-      for (int x = x1; x <= x2; x++) {
-        if (x >= 0 && x < image.width && y1 + i >= 0 && y1 + i < image.height) {
-          image.setPixel(x, y1 + i, color);
-        }
-        if (x >= 0 && x < image.width && y2 - i >= 0 && y2 - i < image.height) {
-          image.setPixel(x, y2 - i, color);
-        }
-      }
-    }
-    
-    // Draw vertical lines
-    for (int i = 0; i < thickness; i++) {
-      for (int y = y1; y <= y2; y++) {
-        if (x1 + i >= 0 && x1 + i < image.width && y >= 0 && y < image.height) {
-          image.setPixel(x1 + i, y, color);
-        }
-        if (x2 - i >= 0 && x2 - i < image.width && y >= 0 && y < image.height) {
-          image.setPixel(x2 - i, y, color);
-        }
-      }
-    }
-  }
-  
-  void _drawText(img.Image image, String text, int x, int y, img.Color color) {
-    // Simple text drawing - you might want to use a proper font library
-    // For now, we'll just draw a small rectangle to represent text
-    final textWidth = text.length * 8; // Approximate width
-    final textHeight = 12; // Approximate height
-    
-    // Draw background rectangle for text
-    for (int dx = 0; dx < textWidth; dx++) {
-      for (int dy = 0; dy < textHeight; dy++) {
-        final px = x + dx;
-        final py = y + dy;
-        if (px >= 0 && px < image.width && py >= 0 && py < image.height) {
-          image.setPixel(px, py, img.ColorRgb8(255, 255, 255)); // White background
-        }
-      }
-    }
-    
-    // Draw text outline (simplified)
-    for (int dx = 0; dx < textWidth; dx++) {
-      for (int dy = 0; dy < textHeight; dy++) {
-        if (dx == 0 || dx == textWidth - 1 || dy == 0 || dy == textHeight - 1) {
-          final px = x + dx;
-          final py = y + dy;
-          if (px >= 0 && px < image.width && py >= 0 && py < image.height) {
-            image.setPixel(px, py, color);
-          }
-        }
-      }
-    }
-  }
-  
-  Future<String> _processWithSettings(img.Image processedImage, Uint8List originalBytes, String suffix) async {
-    try {
-      // Save preprocessed image
-      final tempDir = await getTemporaryDirectory();
-      final preprocessedPath = '${tempDir.path}/preprocessed_$suffix.jpg';
-      File(preprocessedPath).writeAsBytesSync(img.encodeJpg(processedImage, quality: 95));
 
-      // Process with OCR
-      final inputImage = InputImage.fromFilePath(preprocessedPath);
-      final recognizedText = await _textRecognizer.processImage(inputImage);
-      
-      print('OCR Result for $suffix:\n${recognizedText.text}\n---');
-      
-      // Extract reading
-      return _extractMeterReading(recognizedText.text);
-    } catch (e) {
-      print('Error in $suffix processing: $e');
-      return '';
-    }
-  }
-  
-  Future<Map<String, String>?> _getOcrResult(img.Image image, Uint8List imageBytes, String suffix) async {
-    try {
-      img.Image processedImage;
-      
-      // Apply the same preprocessing as in _processWithSettings
-      switch (suffix) {
-        case 'original':
-          processedImage = image;
-          break;
-        case 'high_contrast':
-          processedImage = img.copyResize(image, width: 800, height: 600);
-          processedImage = img.contrast(processedImage, contrast: 200);
-          processedImage = img.adjustColor(processedImage, brightness: 1.3);
-          break;
-        case 'threshold':
-          processedImage = img.grayscale(image);
-          // Apply threshold
-          for (int y = 0; y < processedImage.height; y++) {
-            for (int x = 0; x < processedImage.width; x++) {
-              var pixel = processedImage.getPixel(x, y);
-              var r = pixel.r.toInt();
-              var g = pixel.g.toInt(); 
-              var b = pixel.b.toInt();
-              var luminance = (0.299 * r + 0.587 * g + 0.114 * b).round();
-              if (luminance > 128) {
-                processedImage.setPixel(x, y, img.ColorRgb8(255, 255, 255));
-              } else {
-                processedImage.setPixel(x, y, img.ColorRgb8(0, 0, 0));
-              }
-            }
-          }
-          break;
-        case 'center_crop':
-          final centerX = image.width ~/ 2;
-          final centerY = image.height ~/ 2;
-          final cropSize = (image.width < image.height ? image.width : image.height) * 0.6 ~/ 1;
-          processedImage = img.copyCrop(
-            image,
-            x: centerX - cropSize ~/ 2,
-            y: centerY - cropSize ~/ 2,
-            width: cropSize,
-            height: cropSize,
-          );
-          processedImage = img.contrast(processedImage, contrast: 180);
-          break;
-        default:
-          processedImage = image;
-      }
-      
-      // Save and process
-      final tempDir = await getTemporaryDirectory();
-      final preprocessedPath = '${tempDir.path}/temp_$suffix.jpg';
-      File(preprocessedPath).writeAsBytesSync(img.encodeJpg(processedImage, quality: 95));
+      // Cleanup
+      try { File(tempPath).deleteSync(); } catch (_) {}
 
-      final inputImage = InputImage.fromFilePath(preprocessedPath);
-      final recognizedText = await _textRecognizer.processImage(inputImage);
-      
-      // Clean up
-      try {
-        File(preprocessedPath).deleteSync();
-      } catch (e) {
-        // Ignore cleanup errors
-      }
-      
+      debugInfo.add('ML Kit raw text: ${recognizedText.text}');
       return {
         'raw': recognizedText.text,
-        'processed': _extractMeterReading(recognizedText.text),
       };
     } catch (e) {
-      print('Error getting OCR result for $suffix: $e');
-      return null;
+      debugInfo.add('OCR error: $e');
+      return {'raw': ''};
     }
   }
-  
-  String _selectBestFromMultipleResults(List<String> results) {
-  final validResults = results.where((r) => r.isNotEmpty).toList();
-  if (validResults.isEmpty) return '';
 
-  // Ưu tiên 5 số
-  final RegExp fiveDigits = RegExp(r'^\d{5}$');
-  final fiveDigitResults = validResults.where((r) => fiveDigits.hasMatch(r)).toList();
-  if (fiveDigitResults.isNotEmpty) {
-    return fiveDigitResults.first;
-  }
-
-  // Nếu không có, ưu tiên 4 số
-  final RegExp fourDigits = RegExp(r'^\d{4}$');
-  final fourDigitResults = validResults.where((r) => fourDigits.hasMatch(r)).toList();
-  if (fourDigitResults.isNotEmpty) {
-    return fourDigitResults.first;
-  }
-
-  // Nếu không có, dùng logic cũ
-  if (validResults.length == 1) return validResults.first;
-
-  Map<String, double> scores = {};
-  for (final result in validResults) {
-    double score = 0.0;
-    if (result.length >= 6) {
-      score += 50.0;
-    } else if (result.length >= 4) {
-      score += 30.0;
-    } else if (result.length >= 3) {
-      score += 10.0;
-    }
-    final numValue = int.tryParse(result) ?? 0;
-    if (numValue > 0 && numValue <= 9999999) {
-      score += 25.0;
-    }
-    if (!result.startsWith('20') && !result.contains('2024')) {
-      score += 15.0;
-    }
-    scores[result] = score;
-  }
-  final sortedEntries = scores.entries.toList()
-    ..sort((a, b) => b.value.compareTo(a.value));
-  print('Multiple OCR results scores: $scores');
-  return sortedEntries.first.key;
-}
-
+  /// Extract 4-5 digit meter reading from raw OCR text.
   String _extractMeterReading(String text) {
     if (text.isEmpty) return '';
-    
-    // Print raw OCR for debugging
-    print('RAW OCR TEXT:\n$text\n');
-    
-    // Correct common OCR errors
-    String correctedText = text
+
+    // Correct common OCR errors for digits
+    String corrected = text
         .replaceAll('O', '0')
         .replaceAll('o', '0')
         .replaceAll('D', '0')
         .replaceAll('I', '1')
         .replaceAll('l', '1')
+        .replaceAll('|', '1')
         .replaceAll('S', '5')
         .replaceAll('s', '5')
         .replaceAll('Z', '2')
-        .replaceAll('B', '8');
-    
-    final lines = correctedText.split('\n');
-    List<String> candidates = [];
-    for (String line in lines) {
-      final lineLower = line.toLowerCase();
-      // Skip lines with letters unless they contain 'm3' or 'm³'
-      if (RegExp(r'[a-zA-Z]').hasMatch(line) && !lineLower.contains('m3') && !lineLower.contains('m³')) {
-        continue;
-      }
-      // Extract all numbers from this line
+        .replaceAll('z', '2')
+        .replaceAll('B', '8')
+        .replaceAll('G', '6')
+        .replaceAll('g', '9')
+        .replaceAll('T', '7')
+        .replaceAll('b', '6')
+        .replaceAll('q', '9');
+
+    final lines = corrected.split('\n');
+    final candidates = <String>[];
+
+    for (final line in lines) {
+      // Skip lines with too many non-digit characters (likely not the meter)
+      final digitsOnly = line.replaceAll(RegExp(r'[^0-9]'), '');
+      if (digitsOnly.isEmpty) continue;
+
+      // Extract contiguous digit sequences
       final matches = RegExp(r'\d+').allMatches(line);
       for (final m in matches) {
         candidates.add(m.group(0)!);
       }
+
+      // Also try the full digits-only version of the line
+      if (digitsOnly.length >= 4 && digitsOnly.length <= 6) {
+        candidates.add(digitsOnly);
+      }
     }
-    // Prioritize 5-digit, then 4-digit numbers
-    final fiveDigits = candidates.where((c) => c.length == 5).toList();
-    if (fiveDigits.isNotEmpty) return fiveDigits.first;
-    final fourDigits = candidates.where((c) => c.length == 4).toList();
-    if (fourDigits.isNotEmpty) return fourDigits.first;
-    // If not found, return empty
+
+    // Prioritize: 5-digit > 4-digit > 6-digit
+    final fiveDigit = candidates.where((c) => c.length == 5).toList();
+    if (fiveDigit.isNotEmpty) return fiveDigit.first;
+
+    final fourDigit = candidates.where((c) => c.length == 4).toList();
+    if (fourDigit.isNotEmpty) return fourDigit.first;
+
+    final sixDigit = candidates.where((c) => c.length == 6).toList();
+    if (sixDigit.isNotEmpty) return sixDigit.first;
+
+    // Fallback: longest numeric string that looks like a reading
+    candidates.sort((a, b) => b.length.compareTo(a.length));
+    for (final c in candidates) {
+      if (c.length >= 3 && c.length <= 7) return c;
+    }
+
     return '';
   }
 
   double _calculateConfidence(String reading) {
     if (reading.isEmpty) return 0.0;
-    
-    // Higher confidence for readings starting with zeros
-    if (reading.startsWith('000')) {
-      return 0.9;
-    }
-    
-    // Basic confidence calculation
-    if (reading.length >= 5 && reading.length <= 7) {
-      return 0.7;
-    }
-    
+    if (reading.length == 5) return 0.85;
+    if (reading.length == 4) return 0.7;
+    if (reading.length == 6) return 0.6;
     return 0.3;
+  }
+
+  Future<img.Image?> _createAnnotatedImage(img.Image originalImage, Uint8List imageBytes) async {
+    try {
+      var annotatedImage = img.Image.from(originalImage);
+
+      final tempDir = await getTemporaryDirectory();
+      final tempPath = '${tempDir.path}/temp_ocr_annotate.jpg';
+      File(tempPath).writeAsBytesSync(imageBytes);
+
+      final inputImage = InputImage.fromFilePath(tempPath);
+      final recognizedText = await _textRecognizer.processImage(inputImage);
+
+      for (TextBlock block in recognizedText.blocks) {
+        final boundingBox = block.boundingBox;
+        _drawRectangle(
+          annotatedImage,
+          boundingBox.left.toInt(),
+          boundingBox.top.toInt(),
+          boundingBox.right.toInt(),
+          boundingBox.bottom.toInt(),
+          img.ColorRgb8(0, 0, 255),
+          3,
+        );
+      }
+
+      try { File(tempPath).deleteSync(); } catch (_) {}
+      return annotatedImage;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  void _drawRectangle(img.Image image, int x1, int y1, int x2, int y2, img.Color color, int thickness) {
+    for (int i = 0; i < thickness; i++) {
+      for (int x = x1; x <= x2; x++) {
+        if (x >= 0 && x < image.width) {
+          if (y1 + i >= 0 && y1 + i < image.height) image.setPixel(x, y1 + i, color);
+          if (y2 - i >= 0 && y2 - i < image.height) image.setPixel(x, y2 - i, color);
+        }
+      }
+      for (int y = y1; y <= y2; y++) {
+        if (y >= 0 && y < image.height) {
+          if (x1 + i >= 0 && x1 + i < image.width) image.setPixel(x1 + i, y, color);
+          if (x2 - i >= 0 && x2 - i < image.width) image.setPixel(x2 - i, y, color);
+        }
+      }
+    }
   }
 
   Future<void> dispose() async {
     await _textRecognizer.close();
   }
-} 
+}

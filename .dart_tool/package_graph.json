@@ -9,9 +9,11 @@
       "dependencies": [
         "camera",
         "flutter",
+        "flutter_onnxruntime",
         "fluttertoast",
         "google_mlkit_text_recognition",
         "http",
+        "http_parser",
         "image",
         "image_picker",
         "path",
@@ -49,6 +51,17 @@
         "stream_channel",
         "test_api",
         "vector_math"
+      ]
+    },
+    {
+      "name": "flutter_onnxruntime",
+      "version": "1.6.3",
+      "dependencies": [
+        "flutter",
+        "flutter_web_plugins",
+        "path_provider",
+        "plugin_platform_interface",
+        "web"
       ]
     },
     {
@@ -91,6 +104,16 @@
       "name": "vector_math",
       "version": "2.2.0",
       "dependencies": []
+    },
+    {
+      "name": "http_parser",
+      "version": "4.1.2",
+      "dependencies": [
+        "collection",
+        "source_span",
+        "string_scanner",
+        "typed_data"
+      ]
     },
     {
       "name": "http",
@@ -255,6 +278,18 @@
       ]
     },
     {
+      "name": "web",
+      "version": "1.1.1",
+      "dependencies": []
+    },
+    {
+      "name": "flutter_web_plugins",
+      "version": "0.0.0",
+      "dependencies": [
+        "flutter"
+      ]
+    },
+    {
       "name": "image_picker_windows",
       "version": "0.2.2",
       "dependencies": [
@@ -323,25 +358,26 @@
       ]
     },
     {
-      "name": "web",
-      "version": "1.1.1",
-      "dependencies": []
-    },
-    {
-      "name": "flutter_web_plugins",
-      "version": "0.0.0",
+      "name": "typed_data",
+      "version": "1.4.0",
       "dependencies": [
-        "flutter"
+        "collection"
       ]
     },
     {
-      "name": "http_parser",
-      "version": "4.1.2",
+      "name": "string_scanner",
+      "version": "1.4.1",
+      "dependencies": [
+        "source_span"
+      ]
+    },
+    {
+      "name": "source_span",
+      "version": "1.10.1",
       "dependencies": [
         "collection",
-        "source_span",
-        "string_scanner",
-        "typed_data"
+        "path",
+        "term_glyph"
       ]
     },
     {
@@ -558,22 +594,6 @@
       "dependencies": []
     },
     {
-      "name": "string_scanner",
-      "version": "1.4.1",
-      "dependencies": [
-        "source_span"
-      ]
-    },
-    {
-      "name": "source_span",
-      "version": "1.10.1",
-      "dependencies": [
-        "collection",
-        "path",
-        "term_glyph"
-      ]
-    },
-    {
       "name": "boolean_selector",
       "version": "2.1.2",
       "dependencies": [
@@ -630,13 +650,6 @@
       "name": "mime",
       "version": "2.0.0",
       "dependencies": []
-    },
-    {
-      "name": "typed_data",
-      "version": "1.4.0",
-      "dependencies": [
-        "collection"
-      ]
     },
     {
       "name": "ffi",

@@ -26,4 +26,16 @@
 -keep public class * extends java.lang.Exception
 
 # ONNX Runtime
--keep class ai.onnxruntime.** { *; } 
+-keep class ai.onnxruntime.** { *; }
+
+# Suppress warnings for optional Play Core classes (not needed for this app)
+-dontwarn com.google.android.play.core.**
+
+# Suppress warnings for optional ML Kit language-specific recognizers
+-dontwarn com.google.mlkit.vision.text.chinese.**
+-dontwarn com.google.mlkit.vision.text.devanagari.**
+-dontwarn com.google.mlkit.vision.text.japanese.**
+-dontwarn com.google.mlkit.vision.text.korean.**
+
+# Suppress warnings for java.beans (used by snakeyaml, not available on Android)
+-dontwarn java.beans.**

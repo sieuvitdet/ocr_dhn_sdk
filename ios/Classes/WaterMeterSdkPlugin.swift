@@ -92,7 +92,7 @@ public class WaterMeterSdkPlugin: NSObject, FlutterPlugin {
     
     // Configure the text recognition request
     request.recognitionLevel = .accurate
-    request.usesLanguageCorrection = true
+    request.usesLanguageCorrection = false
     
     do {
       try requestHandler.perform([request])

@@ -140,6 +140,12 @@
       "languageVersion": "3.5"
     },
     {
+      "name": "flutter_onnxruntime",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/flutter_onnxruntime-1.6.3",
+      "packageUri": "lib/",
+      "languageVersion": "3.7"
+    },
+    {
       "name": "flutter_plugin_android_lifecycle",
       "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/flutter_plugin_android_lifecycle-2.0.33",
       "packageUri": "lib/",

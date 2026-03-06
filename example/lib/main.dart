@@ -1,8 +1,13 @@
+import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:water_meter_sdk/api/get_number_ocr.dart';
 import 'package:water_meter_sdk/models/water_meter_result.dart';
 import 'package:water_meter_sdk/water_meter_sdk_ultralytics_yolo.dart';
 
@@ -39,12 +44,47 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _hasPermissionPhoto = false;
   bool _hasPermissionCamera = false;
 
+  // Cropped image rotation & OCR
+  int _croppedRotationTurns = 0;
+  bool _isCroppedProcessing = false;
+  String? _croppedOcrText;
+  double? _croppedOcrScore;
+  String? _croppedError;
+
+  // Online/offline OCR - auto-detected from connectivity
+  bool _isOnlineOcr = false;
+  bool _hasInternet = false;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
+
   @override
   void initState() {
     super.initState();
     _sdk.init();
     _checkPhotoPermission();
     _checkCameraPermission();
+    _initConnectivity();
+  }
+
+  Future<void> _initConnectivity() async {
+    // Check current status
+    final results = await Connectivity().checkConnectivity();
+    _updateConnectivity(results);
+
+    // Listen for changes
+    _connectivitySub = Connectivity().onConnectivityChanged.listen(_updateConnectivity);
+  }
+
+  void _updateConnectivity(List<ConnectivityResult> results) {
+    final connected = results.any((r) =>
+        r == ConnectivityResult.wifi ||
+        r == ConnectivityResult.mobile ||
+        r == ConnectivityResult.ethernet);
+    if (!mounted) return;
+    setState(() {
+      _hasInternet = connected;
+      // Auto-switch to local when no internet
+      if (!connected) _isOnlineOcr = false;
+    });
   }
 
   /// Android < 13 uses Permission.storage, Android 13+ and iOS use Permission.photos
@@ -203,11 +243,15 @@ class _HomeScreenState extends State<HomeScreen> {
       _isProcessing = true;
       _result = null;
       _processedImageBytes = null;
+      _croppedRotationTurns = 0;
+      _croppedOcrText = null;
+      _croppedOcrScore = null;
+      _croppedError = null;
     });
 
     try {
       final bytes = await _selectedImage!.readAsBytes();
-      final result = await _sdk.processImage(bytes, isOnline: true);
+      final result = await _sdk.processImage(bytes, isOnline: false);
 
       if (mounted) {
         setState(() {
@@ -227,8 +271,67 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _runOcrOnCropped() async {
+    final croppedBytes = _result?.imageBytes;
+    if (croppedBytes == null) return;
+
+    setState(() {
+      _isCroppedProcessing = true;
+      _croppedOcrText = null;
+      _croppedOcrScore = null;
+      _croppedError = null;
+    });
+
+    try {
+      Uint8List processBytes = croppedBytes;
+      if (_croppedRotationTurns != 0) {
+        final decoded = img.decodeImage(croppedBytes);
+        if (decoded != null) {
+          final rotated = img.copyRotate(decoded, angle: _croppedRotationTurns * 45.0);
+          processBytes = Uint8List.fromList(img.encodeJpg(rotated));
+        }
+      }
+
+      if (_isOnlineOcr) {
+        // Online OCR via API
+        final tempFile = await _sdk.saveBytesToTempFile(processBytes, 'cropped_ocr.jpg');
+        final apiResult = await GetNumberOCR().ocrImage(tempFile);
+        try { tempFile.deleteSync(); } catch (_) {}
+
+        if (mounted) {
+          setState(() {
+            _isCroppedProcessing = false;
+            _croppedOcrText = apiResult?.text ?? '';
+            _croppedOcrScore = apiResult?.score ?? 0.0;
+          });
+        }
+      } else {
+        // Local OCR (PaddleOCR / ML Kit)
+        final localResult = await _sdk.runLocalOcr(processBytes);
+
+        if (mounted) {
+          setState(() {
+            _isCroppedProcessing = false;
+            _croppedOcrText = localResult.reading.isNotEmpty
+                ? localResult.reading
+                : '';
+            _croppedOcrScore = localResult.confidence;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isCroppedProcessing = false;
+          _croppedError = e.toString();
+        });
+      }
+    }
+  }
+
   @override
   void dispose() {
+    _connectivitySub?.cancel();
     _sdk.dispose();
     super.dispose();
   }
@@ -239,6 +342,28 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('Water Meter OCR Demo'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        actions: [
+          // IconButton(
+          //   icon: const Icon(Icons.science),
+          //   tooltip: 'Batch Test',
+          //   onPressed: () {
+          //     Navigator.push(
+          //       context,
+          //       MaterialPageRoute(builder: (_) => const BatchTestScreen()),
+          //     );
+          //   },
+          // ),
+          // IconButton(
+          //   icon: const Icon(Icons.slideshow),
+          //   tooltip: 'DHN Slide Test',
+          //   onPressed: () {
+          //     Navigator.push(
+          //       context,
+          //       MaterialPageRoute(builder: (_) => const DhnSlideTestScreen()),
+          //     );
+          //   },
+          // ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -284,13 +409,114 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 16),
 
-            if (_processedImageBytes != null)
-              Image.memory(
-                _processedImageBytes!,
-                fit: BoxFit.contain,
-                height: MediaQuery.of(context).size.height * 0.5,
-                width: MediaQuery.of(context).size.width,
+            // Cropped image with rotation & OCR
+            if (_processedImageBytes != null) ...[
+              const Text('Cropped Image:',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+              const SizedBox(height: 4),
+              Container(
+                constraints: const BoxConstraints(maxHeight: 250),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Transform.rotate(
+                    angle: _croppedRotationTurns * math.pi / 4,
+                    child: Image.memory(_processedImageBytes!, fit: BoxFit.contain),
+                  ),
+                ),
               ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () => setState(
+                    () => _croppedRotationTurns = (_croppedRotationTurns + 1) % 8,
+                  ),
+                  icon: const Icon(Icons.rotate_right, size: 18),
+                  label: const Text('Xoay 45°'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.orange,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Icon(
+                    _hasInternet ? Icons.wifi : Icons.wifi_off,
+                    size: 16,
+                    color: _hasInternet ? Colors.green : Colors.red,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    _isOnlineOcr ? 'Online' : 'Local',
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                  Switch(
+                    value: _isOnlineOcr,
+                    // Disable switch when no internet - can only be local
+                    onChanged: _hasInternet
+                        ? (v) => setState(() => _isOnlineOcr = v)
+                        : null,
+                    activeTrackColor: Colors.orange.shade200,
+                    activeThumbColor: Colors.orange,
+                  ),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _isCroppedProcessing ? null : _runOcrOnCropped,
+                      icon: Icon(_isCroppedProcessing
+                          ? Icons.hourglass_empty
+                          : _isOnlineOcr ? Icons.cloud_upload : Icons.offline_bolt),
+                      label: Text(_isCroppedProcessing
+                          ? 'Processing...'
+                          : _isOnlineOcr ? 'OCR Online' : 'OCR Local'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        backgroundColor: _isOnlineOcr ? Colors.orange : Colors.teal,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (_croppedError != null) ...[
+                const SizedBox(height: 8),
+                Text('Error: $_croppedError',
+                    style: TextStyle(color: Colors.red.shade700, fontSize: 12)),
+              ],
+              if (_croppedOcrText != null) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Cropped OCR: ${_croppedOcrText!.isNotEmpty ? _croppedOcrText! : "No reading"}',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange.shade900,
+                        ),
+                      ),
+                      if (_croppedOcrScore != null)
+                        Text(
+                          'Score: ${(_croppedOcrScore! * 100).toStringAsFixed(1)}%',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+            ],
 
             // Pick image buttons
             Row(
@@ -395,6 +621,30 @@ class _HomeScreenState extends State<HomeScreen> {
                         'Processed Text: ${_result!.processedText}',
                         style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                       ),
+                    // Show all beam search candidates
+                    if (_result!.candidates.length > 1) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'All candidates (${_result!.candidates.length}):',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.blue.shade700,
+                        ),
+                      ),
+                      ..._result!.candidates.asMap().entries.map((entry) {
+                        final i = entry.key;
+                        final c = entry.value;
+                        return Text(
+                          '  #${i + 1}: "${c.text}" (${(c.confidence * 100).toStringAsFixed(1)}%)${i == 0 ? " *best" : ""}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontFamily: 'monospace',
+                            color: i == 0 ? Colors.green.shade800 : Colors.grey.shade700,
+                          ),
+                        );
+                      }),
+                    ],
                   ],
                 ),
               ),
