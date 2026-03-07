@@ -51,7 +51,7 @@ class _DhnSlideTestScreenState extends State<DhnSlideTestScreen> {
       final assetManifest = await AssetManifest.loadFromAssetBundle(rootBundle);
       final allAssets = assetManifest.listAssets();
       final paths = allAssets
-          .where((k) => k.startsWith('assets/test_images/dhn_test/10/'))
+          .where((k) => k.startsWith('assets/test_images/10/'))
           .where((k) => k.endsWith('.jpg') || k.endsWith('.png') || k.endsWith('.jpeg'))
           .toList()
         ..sort();

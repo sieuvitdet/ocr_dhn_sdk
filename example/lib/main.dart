@@ -10,6 +10,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:water_meter_sdk/api/get_number_ocr.dart';
 import 'package:water_meter_sdk/models/water_meter_result.dart';
 import 'package:water_meter_sdk/water_meter_sdk_ultralytics_yolo.dart';
+import 'package:water_meter_sdk_example/dhn_slide_test_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

@@ -164,19 +164,11 @@
     },
     {
       "name": "image",
-      "version": "4.7.2",
+      "version": "4.3.0",
       "dependencies": [
         "archive",
         "meta",
         "xml"
-      ]
-    },
-    {
-      "name": "google_mlkit_text_recognition",
-      "version": "0.15.1",
-      "dependencies": [
-        "flutter",
-        "google_mlkit_commons"
       ]
     },
     {
@@ -373,7 +365,7 @@
     },
     {
       "name": "source_span",
-      "version": "1.10.1",
+      "version": "1.10.2",
       "dependencies": [
         "collection",
         "path",
@@ -509,7 +501,7 @@
     },
     {
       "name": "camera_avfoundation",
-      "version": "0.9.23",
+      "version": "0.9.23+2",
       "dependencies": [
         "camera_platform_interface",
         "flutter",
@@ -518,7 +510,7 @@
     },
     {
       "name": "camera_android",
-      "version": "0.10.10+14",
+      "version": "0.10.10+15",
       "dependencies": [
         "camera_platform_interface",
         "flutter",
@@ -537,18 +529,10 @@
     },
     {
       "name": "archive",
-      "version": "4.0.7",
+      "version": "3.6.1",
       "dependencies": [
         "crypto",
-        "path",
-        "posix"
-      ]
-    },
-    {
-      "name": "google_mlkit_commons",
-      "version": "0.11.1",
-      "dependencies": [
-        "flutter"
+        "path"
       ]
     },
     {
@@ -653,7 +637,7 @@
     },
     {
       "name": "ffi",
-      "version": "2.1.5",
+      "version": "2.2.0",
       "dependencies": []
     },
     {
@@ -671,7 +655,7 @@
     },
     {
       "name": "objective_c",
-      "version": "9.2.5",
+      "version": "9.3.0",
       "dependencies": [
         "code_assets",
         "collection",
@@ -689,19 +673,10 @@
     },
     {
       "name": "petitparser",
-      "version": "7.0.1",
+      "version": "7.0.2",
       "dependencies": [
         "collection",
         "meta"
-      ]
-    },
-    {
-      "name": "posix",
-      "version": "6.0.3",
-      "dependencies": [
-        "ffi",
-        "meta",
-        "path"
       ]
     },
     {
@@ -786,6 +761,21 @@
       "dependencies": [
         "meta",
         "path"
+      ]
+    },
+    {
+      "name": "google_mlkit_text_recognition",
+      "version": "0.15.1",
+      "dependencies": [
+        "flutter",
+        "google_mlkit_commons"
+      ]
+    },
+    {
+      "name": "google_mlkit_commons",
+      "version": "0.11.1",
+      "dependencies": [
+        "flutter"
       ]
     }
   ],

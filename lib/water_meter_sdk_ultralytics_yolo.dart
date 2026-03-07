@@ -4,10 +4,10 @@ import 'dart:math' as math;
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:image/image.dart' as img;
+import 'package:ultralytics_yolo/yolo.dart';
 import 'package:water_meter_sdk/api/get_number_ocr.dart';
 import 'package:water_meter_sdk/models/water_meter_result.dart';
 import 'package:water_meter_sdk/models/detection_test_result.dart';
-import 'package:ultralytics_yolo/yolo.dart';
 import 'package:water_meter_sdk/services/water_meter_ocr_service.dart';
 import 'package:water_meter_sdk/services/paddle_ocr_service.dart';
 
@@ -20,7 +20,7 @@ class WaterMeterSdkUltralyticsYolo {
   final PaddleOCRService _paddleOcrService = PaddleOCRService();
   /// Switch between OCR engines at runtime.
   OcrEngine ocrEngine = OcrEngine.paddleOcr;
-  YOLO? _yolo;
+  late YOLO yolo;
   bool _isInitialized = false;
   Future<void>? _initFuture;
 
@@ -31,7 +31,7 @@ class WaterMeterSdkUltralyticsYolo {
     if (Platform.isAndroid) {
       return 'best_float32'; // android/app/src/main/assets/best_float32.tflite
     } else {
-      return 'best'; // ios/Runner/best.mlpackage
+      return 'yolo11n-obb'; // ios/Runner/best.mlpackage
     }
   }
 
@@ -60,11 +60,11 @@ class WaterMeterSdkUltralyticsYolo {
       return;
     }
     // iOS: initialize YOLO for Dart-side OBB detection
-    _yolo = YOLO(
+    yolo = YOLO(
       modelPath: modelPath,
       task: YOLOTask.obb,
     );
-    await _yolo!.loadModel();
+    await yolo.loadModel();
     _isInitialized = true;
   }
 
@@ -142,20 +142,20 @@ class WaterMeterSdkUltralyticsYolo {
   /// iOS path: YOLO OBB detection + crop + OCR
   Future<WaterMeterResult?> processWaterMeterImage(Uint8List imageBytes, {bool isOnline = false}) async {
     var croppedBytesAfter = await runOBBDetectionAndCrop(imageBytes);
-    // Ensure digits are horizontal before OCR
     croppedBytesAfter = _ensureLandscape(croppedBytesAfter, null);
-    if (isOnline) {
-      final tempFile = await saveBytesToTempFile(croppedBytesAfter, 'cropped.jpg');
-      final ocrApi = GetNumberOCR();
-      final apiResult = await ocrApi.ocrImage(tempFile);
-      return WaterMeterResult(
-        imageBytes: croppedBytesAfter,
-        reading: apiResult?.text ?? '',
-        confidence: apiResult?.score ?? 0,
-      );
-    } else {
-      return await runLocalOcr(croppedBytesAfter);
-    }
+        if (isOnline) {
+        final tempFile = await saveBytesToTempFile(croppedBytesAfter, 'cropped.jpg');
+
+        final ocrApi = GetNumberOCR();
+        final result = await ocrApi.ocrImage(tempFile);
+        return WaterMeterResult(
+          imageBytes: croppedBytesAfter,
+            reading: result?.text ?? '',
+            confidence: 0,
+          );
+        } else {
+          return await runLocalOcr(croppedBytesAfter);
+        }
   }
 
   Future<File> saveBytesToTempFile(Uint8List bytes, String filename) async {
@@ -173,79 +173,147 @@ class WaterMeterSdkUltralyticsYolo {
   }
 
   Future<Uint8List> runOBBDetectionAndCrop(Uint8List imageBytes) async {
-    final originalImage = decodeWithExif(imageBytes);
-    if (originalImage == null) return imageBytes;
 
-    // Resize to 416x416 for YOLO detection only
+    Uint8List imageBytesAfter;
+
+    final originalImageBytes = imageBytes;
+    
+    final originalImage = decodeWithExif(originalImageBytes);
+    if (originalImage == null) {
+      return imageBytes;
+    }
+
     final resizedImage = img.copyResize(originalImage, width: 416, height: 416);
     final resizedImageBytes = Uint8List.fromList(img.encodePng(resizedImage));
-
-    final results = await _yolo!.predict(resizedImageBytes);
+    
+    final results = await yolo!.predict(resizedImageBytes);
     final obbList = results['obb'] as List<dynamic>;
-
+    
     if (obbList.isNotEmpty) {
+      final detections = <Map<String, dynamic>>[];
+      
       for (final detection in obbList) {
         final boxes = detection as Map<dynamic, dynamic>;
         final points = boxes['points'] as List<dynamic>? ?? [];
+        if (points.isNotEmpty) {
+          double minX = double.infinity;
+          double maxX = double.negativeInfinity;
+          double minY = double.infinity;
+          double maxY = double.negativeInfinity;
+          
+          for (final point in points) {
+            final pointMap = point as Map<dynamic, dynamic>;
+            final x = (pointMap['x'] as num).toDouble();
+            final y = (pointMap['y'] as num).toDouble();
+            
+            minX = minX < x ? minX : x;
+            maxX = maxX > x ? maxX : x;
+            minY = minY < y ? minY : y;
+            maxY = maxY > y ? maxY : y;
+          }
 
-        if (points.isNotEmpty && points.length == 4
-            && (boxes['confidence'] as num).toDouble() > 0.2
-            && (boxes['confidence'] as num).toDouble() < 1) {
-          // Crop from original image (full resolution, correct aspect ratio)
-          // Points are normalized [0,1] so they scale to any image size
-          return cropImageFromOBB(originalImage, points);
+          detections.add({
+                'class': boxes['class'],
+                'confidence': (boxes['confidence'] as num).toDouble(),
+                'points': points,
+              });
+              print('  --- $boxes');
+
+          if (points.isNotEmpty && points.length == 4 && (boxes['confidence'] as num).toDouble() > 0.2 && (boxes['confidence'] as num).toDouble() < 1) { 
+            imageBytesAfter = cropImageFromOBB(resizedImageBytes, points);
+            return imageBytesAfter;
+          }
         }
+        
+        // Add to detections list for drawing
+        detections.add({
+          'class': boxes['class'],
+          'confidence': (boxes['confidence'] as num).toDouble(),
+          'points': points,
+        });
+        print('  ---');
       }
-    }
+      
+    } 
     return imageBytes;
   }
 
-  Uint8List cropImageFromOBB(img.Image image, List<dynamic> points) {
+  Uint8List cropImageFromOBB(Uint8List imageBytes, List<dynamic> points) {
+    final image = decodeWithExif(imageBytes);
+    if (image == null) throw Exception('Failed to decode image for cropping');
 
-    // Parse points into a typed list for angle computation
-    final typedPoints = <Map<String, double>>[];
+    // Parse OBB corner points (normalized 0..1 → pixel coords)
+    final pixelPoints = <Map<String, double>>[];
+    for (final point in points) {
+      final pointMap = point as Map<dynamic, dynamic>;
+      pixelPoints.add({
+        'x': (pointMap['x'] as num).toDouble(),
+        'y': (pointMap['y'] as num).toDouble(),
+      });
+    }
+
+    // Compute OBB rotation angle from corner points
+    final angleDeg = _computeAngleFromPoints(
+      pixelPoints,
+      image.width.toDouble(),
+      image.height.toDouble(),
+    );
+
+    // Rotate the full image to deskew (make the OBB axis-aligned)
+    img.Image deskewed;
+    if (angleDeg.abs() > 2.0) {
+      deskewed = img.copyRotate(image, angle: -angleDeg, interpolation: img.Interpolation.linear);
+    } else {
+      deskewed = image;
+    }
+
+    // After rotation, recompute axis-aligned bounding box
+    // Rotate corner points by -angleDeg around image center to find new positions
+    final radians = -angleDeg * math.pi / 180.0;
+    final cosA = math.cos(radians);
+    final sinA = math.sin(radians);
+    final ocx = image.width / 2.0;
+    final ocy = image.height / 2.0;
+    // The rotated canvas may be larger; compute its center
+    final dcx = deskewed.width / 2.0;
+    final dcy = deskewed.height / 2.0;
+
     double minX = double.infinity;
     double maxX = double.negativeInfinity;
     double minY = double.infinity;
     double maxY = double.negativeInfinity;
 
-    for (final point in points) {
-      final pointMap = point as Map<dynamic, dynamic>;
-      final nx = (pointMap['x'] as num).toDouble();
-      final ny = (pointMap['y'] as num).toDouble();
-      typedPoints.add({'x': nx, 'y': ny});
-
-      final x = nx * image.width;
-      final y = ny * image.height;
-      minX = math.min(minX, x);
-      maxX = math.max(maxX, x);
-      minY = math.min(minY, y);
-      maxY = math.max(maxY, y);
+    for (final pt in pixelPoints) {
+      final px = pt['x']! * image.width;
+      final py = pt['y']! * image.height;
+      // Rotate around original image center, then translate to deskewed center
+      final rx = cosA * (px - ocx) - sinA * (py - ocy) + dcx;
+      final ry = sinA * (px - ocx) + cosA * (py - ocy) + dcy;
+      minX = math.min(minX, rx);
+      maxX = math.max(maxX, rx);
+      minY = math.min(minY, ry);
+      maxY = math.max(maxY, ry);
     }
 
-    // Extra padding to give rotation headroom
-    final padding = Platform.isIOS ? 20 : 5;
+    // Add padding
+    const padding = 15;
     minX = math.max(0, minX - padding);
     minY = math.max(0, minY - padding);
-    maxX = math.min(image.width.toDouble(), maxX + padding);
-    maxY = math.min(image.height.toDouble(), maxY + padding);
+    maxX = math.min(deskewed.width.toDouble(), maxX + padding);
+    maxY = math.min(deskewed.height.toDouble(), maxY + padding);
+
+    final cropW = (maxX - minX).round().clamp(1, deskewed.width);
+    final cropH = (maxY - minY).round().clamp(1, deskewed.height);
 
     final croppedImage = img.copyCrop(
-      image,
-      x: minX.round(),
-      y: minY.round(),
-      width: (maxX - minX).round(),
-      height: (maxY - minY).round(),
+      deskewed,
+      x: minX.round().clamp(0, deskewed.width - 1),
+      y: minY.round().clamp(0, deskewed.height - 1),
+      width: cropW,
+      height: cropH,
     );
 
-    // Compute angle and deskew if tilted
-    final angleDeg = _computeAngleFromPoints(
-      typedPoints,
-      image.width.toDouble(),
-      image.height.toDouble(),
-    );
-
-    return _rotateAndCrop(croppedImage, angleDeg);
+    return Uint8List.fromList(img.encodePng(croppedImage));
   }
 
   /// Android path: Native OBB detection via TFLite method channel
@@ -579,7 +647,18 @@ class WaterMeterSdkUltralyticsYolo {
     }
 
     // Convert to degrees
-    return angle * 180.0 / math.pi;
+    var degrees = angle * 180.0 / math.pi;
+
+    // Normalize to [-90°, 90°] — water meters are roughly horizontal,
+    // so angles near ±180° mean the edge vector points "backwards".
+    // Without this, deskewing would flip the image 180°.
+    if (degrees > 90) {
+      degrees -= 180;
+    } else if (degrees < -90) {
+      degrees += 180;
+    }
+
+    return degrees;
   }
 
   /// Rotate [image] by -[angleDeg] to deskew, then center-crop to remove
@@ -702,8 +781,8 @@ class WaterMeterSdkUltralyticsYolo {
   }
 
   Future<void> dispose() async {
-    if (Platform.isIOS && _yolo != null) {
-      await _yolo!.dispose();
+    if (Platform.isIOS && yolo != null) {
+      await yolo!.dispose();
     }
     await _ocrService.dispose();
     await _paddleOcrService.dispose();

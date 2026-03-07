@@ -3,7 +3,7 @@
   "packages": [
     {
       "name": "archive",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/archive-4.0.7",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/archive-3.6.1",
       "packageUri": "lib/",
       "languageVersion": "3.0"
     },
@@ -27,13 +27,13 @@
     },
     {
       "name": "camera_android",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/camera_android-0.10.10+14",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/camera_android-0.10.10+15",
       "packageUri": "lib/",
       "languageVersion": "3.9"
     },
     {
       "name": "camera_avfoundation",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/camera_avfoundation-0.9.23",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/camera_avfoundation-0.9.23+2",
       "packageUri": "lib/",
       "languageVersion": "3.9"
     },
@@ -93,7 +93,7 @@
     },
     {
       "name": "ffi",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/ffi-2.1.5",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/ffi-2.2.0",
       "packageUri": "lib/",
       "languageVersion": "3.7"
     },
@@ -207,9 +207,9 @@
     },
     {
       "name": "image",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/image-4.7.2",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/image-4.3.0",
       "packageUri": "lib/",
-      "languageVersion": "3.0"
+      "languageVersion": "2.15"
     },
     {
       "name": "image_picker",
@@ -321,7 +321,7 @@
     },
     {
       "name": "objective_c",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/objective_c-9.2.5",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/objective_c-9.3.0",
       "packageUri": "lib/",
       "languageVersion": "3.10"
     },
@@ -405,7 +405,7 @@
     },
     {
       "name": "petitparser",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/petitparser-7.0.1",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/petitparser-7.0.2",
       "packageUri": "lib/",
       "languageVersion": "3.8"
     },
@@ -418,12 +418,6 @@
     {
       "name": "plugin_platform_interface",
       "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/plugin_platform_interface-2.1.8",
-      "packageUri": "lib/",
-      "languageVersion": "3.0"
-    },
-    {
-      "name": "posix",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/posix-6.0.3",
       "packageUri": "lib/",
       "languageVersion": "3.0"
     },
@@ -441,7 +435,7 @@
     },
     {
       "name": "source_span",
-      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/source_span-1.10.1",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/source_span-1.10.2",
       "packageUri": "lib/",
       "languageVersion": "3.1"
     },
@@ -489,9 +483,9 @@
     },
     {
       "name": "ultralytics_yolo",
-      "rootUri": "../lib/packages/ultralytics_yolo",
+      "rootUri": "file:///Users/trantanduc/.pub-cache/hosted/pub.dev/ultralytics_yolo-0.2.0",
       "packageUri": "lib/",
-      "languageVersion": "3.6"
+      "languageVersion": "3.8"
     },
     {
       "name": "vector_math",
