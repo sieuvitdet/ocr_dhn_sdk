@@ -172,6 +172,14 @@
       ]
     },
     {
+      "name": "google_mlkit_text_recognition",
+      "version": "0.15.1",
+      "dependencies": [
+        "flutter",
+        "google_mlkit_commons"
+      ]
+    },
+    {
       "name": "plugin_platform_interface",
       "version": "2.1.8",
       "dependencies": [
@@ -536,6 +544,13 @@
       ]
     },
     {
+      "name": "google_mlkit_commons",
+      "version": "0.11.1",
+      "dependencies": [
+        "flutter"
+      ]
+    },
+    {
       "name": "sky_engine",
       "version": "0.0.0",
       "dependencies": []
@@ -761,21 +776,6 @@
       "dependencies": [
         "meta",
         "path"
-      ]
-    },
-    {
-      "name": "google_mlkit_text_recognition",
-      "version": "0.15.1",
-      "dependencies": [
-        "flutter",
-        "google_mlkit_commons"
-      ]
-    },
-    {
-      "name": "google_mlkit_commons",
-      "version": "0.11.1",
-      "dependencies": [
-        "flutter"
       ]
     }
   ],

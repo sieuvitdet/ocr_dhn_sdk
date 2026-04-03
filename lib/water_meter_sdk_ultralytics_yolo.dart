@@ -143,19 +143,20 @@ class WaterMeterSdkUltralyticsYolo {
   Future<WaterMeterResult?> processWaterMeterImage(Uint8List imageBytes, {bool isOnline = false}) async {
     var croppedBytesAfter = await runOBBDetectionAndCrop(imageBytes);
     croppedBytesAfter = _ensureLandscape(croppedBytesAfter, null);
-        if (isOnline) {
-        final tempFile = await saveBytesToTempFile(croppedBytesAfter, 'cropped.jpg');
-
-        final ocrApi = GetNumberOCR();
-        final result = await ocrApi.ocrImage(tempFile);
-        return WaterMeterResult(
-          imageBytes: croppedBytesAfter,
-            reading: result?.text ?? '',
-            confidence: 0,
-          );
-        } else {
-          return await runLocalOcr(croppedBytesAfter);
-        }
+    if (isOnline) {
+      final tempFile = await saveBytesToTempFile(croppedBytesAfter, 'cropped.jpg');
+      final ocrApi = GetNumberOCR();
+      final result = await ocrApi.ocrImage(tempFile, autoOrientation: true);
+      try { tempFile.deleteSync(); } catch (_) {}
+      return WaterMeterResult(
+        imageBytes: croppedBytesAfter,
+        reading: result?.text ?? '',
+        confidence: result?.score ?? 0,
+        rawOcrText: result?.rawText,
+      );
+    } else {
+      return await runLocalOcr(croppedBytesAfter);
+    }
   }
 
   Future<File> saveBytesToTempFile(Uint8List bytes, String filename) async {
@@ -423,10 +424,28 @@ class WaterMeterSdkUltralyticsYolo {
     final annotatedImageBytes = nativeResult['annotatedImage'] as Uint8List?;
     Uint8List? croppedImageBytes = nativeResult['croppedImage'] as Uint8List?;
 
-    // Deskew the native-cropped image using the detected angle
+    // Deskew the native-cropped image using angle computed from corner points.
+    // Using _computeAngleFromPoints (same as iOS) ensures the LONGER edge
+    // (digit strip) is aligned horizontally. The native angleDeg can refer
+    // to the short side when OBB h > w, causing digits to end up vertical.
     if (croppedImageBytes != null && allDetections.isNotEmpty) {
       final bestDet = allDetections.first;
-      final angleDeg = (bestDet['angleDeg'] as num?)?.toDouble() ?? 0.0;
+      final nativeAngle = (bestDet['angleDeg'] as num?)?.toDouble() ?? 0.0;
+
+      final pointsList = bestDet['points'] as List<dynamic>;
+      final detPoints = pointsList.map((p) {
+        final m = p as Map<String, dynamic>;
+        return <String, double>{
+          'x': (m['x'] as num).toDouble(),
+          'y': (m['y'] as num).toDouble(),
+        };
+      }).toList();
+      // imgW/imgH=1.0 since points are in consistent coords (angle is scale-invariant)
+      final angleDeg = _computeAngleFromPoints(detPoints, 1.0, 1.0);
+
+      logs.add('Native angleDeg=${nativeAngle.toStringAsFixed(1)}°, '
+          'corner-based=${angleDeg.toStringAsFixed(1)}°');
+
       if (angleDeg.abs() > 2.0) {
         logs.add('Deskewing cropped image by ${angleDeg.toStringAsFixed(1)}°');
         final croppedImg = img.decodeImage(croppedImageBytes);
@@ -454,7 +473,7 @@ class WaterMeterSdkUltralyticsYolo {
       try {
         final tempFile = await saveBytesToTempFile(bytesForOcr, 'native_obb_cropped.jpg');
         final ocrApi = GetNumberOCR();
-        final apiResult = await ocrApi.ocrImage(tempFile);
+        final apiResult = await ocrApi.ocrImage(tempFile, autoOrientation: true);
         ocrReading = apiResult?.text ?? '';
         ocrConfidence = apiResult?.score ?? 0;
         rawOcrText = apiResult?.text;

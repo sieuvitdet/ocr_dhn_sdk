@@ -235,22 +235,38 @@ class WaterMeterOCRService {
 
     // Correct common OCR errors for digits
     String corrected = text
-        .replaceAll('O', '0')
-        .replaceAll('o', '0')
-        .replaceAll('D', '0')
-        .replaceAll('I', '1')
-        .replaceAll('l', '1')
-        .replaceAll('|', '1')
-        .replaceAll('S', '5')
-        .replaceAll('s', '5')
-        .replaceAll('Z', '2')
-        .replaceAll('z', '2')
-        .replaceAll('B', '8')
-        .replaceAll('G', '6')
-        .replaceAll('g', '9')
-        .replaceAll('T', '7')
-        .replaceAll('b', '6')
-        .replaceAll('q', '9');
+        // → 0
+        .replaceAll('O', '0').replaceAll('o', '0').replaceAll('D', '0')
+        .replaceAll('C', '0').replaceAll('c', '0').replaceAll('Q', '0')
+        .replaceAll('U', '0').replaceAll('u', '0')
+        .replaceAll('N', '0').replaceAll('n', '0')
+        .replaceAll('V', '0').replaceAll('v', '0')
+        .replaceAll('W', '0').replaceAll('w', '0')
+        .replaceAll('M', '0').replaceAll('m', '0')
+        // → 1
+        .replaceAll('I', '1').replaceAll('l', '1').replaceAll('L', '1')
+        .replaceAll('|', '1').replaceAll('J', '1').replaceAll('j', '1')
+        .replaceAll('t', '1').replaceAll('f', '1').replaceAll('r', '1')
+        .replaceAll('!', '1')
+        // → 2
+        .replaceAll('Z', '2').replaceAll('z', '2').replaceAll('R', '2')
+        // → 3
+        .replaceAll('E', '3').replaceAll('e', '3')
+        // → 4
+        .replaceAll('A', '4').replaceAll('a', '4').replaceAll('h', '4')
+        .replaceAll('H', '4').replaceAll('K', '4').replaceAll('k', '4')
+        // → 5
+        .replaceAll('S', '5').replaceAll('s', '5')
+        // → 6
+        .replaceAll('G', '6').replaceAll('b', '6')
+        // → 7
+        .replaceAll('T', '7').replaceAll('F', '7')
+        .replaceAll('Y', '7').replaceAll('y', '7')
+        // → 8
+        .replaceAll('B', '8').replaceAll('X', '8').replaceAll('x', '8')
+        // → 9
+        .replaceAll('P', '9').replaceAll('p', '9')
+        .replaceAll('g', '9').replaceAll('q', '9');
 
     final lines = corrected.split('\n');
     final candidates = <String>[];
